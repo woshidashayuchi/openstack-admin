@@ -3,8 +3,8 @@
 # Time: 2018/3/1 9:50
 from common import conf
 from common.logs import logging as log
-from sqlalchemy import MetaData, Table, create_engine, func
-from sqlalchemy import String, Column, Integer, DateTime
+from sqlalchemy import MetaData, Table, create_engine, func, \
+                       String, Column, Integer, DateTime, TIMESTAMP, Text
 
 
 class DBInit(object):
@@ -31,7 +31,6 @@ class DBInit(object):
         log.error('engine db error, reason is: %s' % e)
         raise Exception(e)
     metadata = MetaData(engine)
-
     cloudhost = Table('cloudhost', metadata,
                       Column('uuid', String(64), primary_key=True),
                       Column('instance_name', String(64)),
@@ -41,7 +40,6 @@ class DBInit(object):
                       Column('image', String(64)),
                       Column('instance_cpu', Integer),
                       Column('instance_mem', Integer),
-
                       Column('instance_type', String(64)),
                       Column('net', String(64)),
                       Column('net_interface', String(64)),
@@ -49,8 +47,20 @@ class DBInit(object):
                       Column('keypair', String(64)),
                       Column('status', String(64)),
                       Column('power_state', String(64)),
-                      Column('create_time', DateTime
-                             ))
+                      Column('create_time', TIMESTAMP(True)),
+                      Column('update_time', TIMESTAMP(True), nullable=False))
+
+    keypair = Table('keypair', metadata,
+                    Column('uuid', String(64), primary_key=True),
+                    Column('fingerprint', String(128)),
+                    Column('keypair_name', String(64)),
+                    Column('private_key', Text()),
+                    Column('public_key', Text()),
+                    Column('create_time', TIMESTAMP(True),
+                           server_default=func.now(), nullable=False))
+                    # Column('update_time', TIMESTAMP(True),
+                    #        server_default=func.now(), nullable=False))
 
     metadata.create_all(engine)
     Table('cloudhost', metadata, autoload=True)
+    Table('keypair', metadata, autoload=True)

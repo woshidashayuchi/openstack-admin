@@ -115,11 +115,17 @@ if __name__ == '__main__':
     # print conn.block_storage.delete_volume.__doc__
 
     # print dir(conn.compute)
-    compute = ComputeManager()
-    try:
-        result = compute.create()
-    except Exception, e:
-        log.error('error, reason is: %s' % e)
-        raise
+    # compute = ComputeManager()
+    # try:
+    #     result = compute.create()
+    # except Exception, e:
+    #     log.error('error, reason is: %s' % e)
+    #     raise
 
-    print result
+    # print result
+
+    # ret = conn.compute.volume_attachments('4faed492-5285-4c97-a6c4-1d19dd42f635')
+    # print ret.next()
+    # print conn.block_storage.get_volume('4faed492-5285-4c97-a6c4-1d19dd42f635')
+
+    print conn.compute.create_keypair.__doc__

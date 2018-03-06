@@ -6,7 +6,9 @@ from flask import request
 from flask_restful import Resource
 from common.logs import logging as log
 from common.request_result import request_result
-from manager.compute_manager import CloudhostManager, CloudhostRouteManager
+from manager.cloudhost_manager import CloudhostManager, CloudhostRouteManager
+from manager.keypair_manager import KeypairManager, KeypairRouteManager
+from manager.network_to_server_manager import NetworkToServerManager
 
 
 class CloudhostApi(Resource):
@@ -111,7 +113,7 @@ class CloudhostApi(Resource):
         #: The hypervisor host name. Appears in the response for administrative
         #: users only.
         hypervisor_hostname = resource.Body(
-            'OS-EXT-SRV-ATTR:hypervisor_hostname')
+        'OS-EXT-SRV-ATTR:hypervisor_hostname')
         #: The instance name. The Compute API generates the instance name from
            the
         #: instance name template. Appears in the response for administrative
@@ -173,5 +175,112 @@ class ClouhostRouteApi(Resource):
         return result
 
     def put(self, cloudhost_uuid):
-        result = self.manager.update(cloudhost_uuid)
+        result = dict()
+        up_type = request.args.get('up_type')
+
+        if up_type == 'reboot':
+            try:
+                reboot_type = json.loads(request.get_data()).get('reboot_type')
+                if reboot_type is None:
+                    return request_result(101)
+                result = self.manager.update(cloudhost_uuid=cloudhost_uuid,
+                                             up_type=up_type,
+                                             reboot_type=reboot_type)
+            except Exception, e:
+                log.error('parameters error when update instance(reboot), '
+                          'reason is: %s' % e)
+                request_result(101)
+
+        if up_type == 'attach':
+            try:
+                attach = json.loads(request.get_data())
+                log.info('++++++++++++:%s' % attach)
+                result = self.manager.update(cloudhost_uuid=cloudhost_uuid,
+                                             up_type=up_type,
+                                             attach=attach)
+            except Exception, e:
+                log.error('parameters error when update instance(reboot), '
+                          'reason is: %s' % e)
+                request_result(101)
+
+            return result
+
+        result = self.manager.update(cloudhost_uuid=cloudhost_uuid,
+                                     up_type=up_type)
+
+        return result
+
+
+class KeypairApi(Resource):
+
+    def __init__(self):
+        self.manager = KeypairManager()
+
+    def get(self):
+        result = self.manager.list()
+        return result
+
+    # name, keypair_type: ssh or x509
+    def post(self):
+        try:
+            name = json.loads(request.get_data()).get('name')
+        except Exception, e:
+            log.error('parameters error, reason is: %s' % e)
+            return request_result(101)
+
+        result = self.manager.create(name=name)
+        return result
+
+class KeypairRouteApi(Resource):
+    def __init__(self):
+        self.manager = KeypairRouteManager()
+
+    def get(self, keypair_uuid):
+        result = self.manager.detail(keypair_uuid)
+        return result
+
+    def delete(self, keypair_uuid):
+        result = self.manager.delete(keypair_uuid)
+        return result
+
+    def update(self, keypair_uuid):
+        pass
+
+
+class NetworkToServerApi(Resource):
+    def __init__(self):
+        self.manager = NetworkToServerManager()
+
+    def post(self):
+        try:
+            param = json.loads(request.get_data())
+        except Exception, e:
+            log.error('parameters error, reason is: %s' % e)
+            return request_result(101)
+
+        cloudhost_uuid = param.get('cloudhost_uuid')
+        address = param.get('address')
+        fixed_address = param.get('fixed_address')
+
+        result = self.manager.\
+            add_floating_ip_to_server(cloudhost_uuid=cloudhost_uuid,
+                                      address=address,
+                                      fixed_address=fixed_address)
+
+        return result
+
+    def delete(self):
+        try:
+            param = json.loads(request.get_data())
+        except Exception, e:
+            log.error('parameters error, reason is: %s' % e)
+            return request_result(101)
+
+        cloudhost_uuid = param.get('cloudhost_uuid')
+        address = param.get('address')
+
+        result = self.manager.\
+            remove_floating_ip_from_server(cloudhost_uuid=cloudhost_uuid,
+                                           address=address)
+
         return result

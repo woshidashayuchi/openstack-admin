@@ -59,3 +59,44 @@ class ComputeDB(MysqlInit):
         sql = "delete from cloudhost WHERE uuid='%s'" % cloudhost_uuid
 
         return super(ComputeDB, self).exec_update_sql(sql)
+
+    def cloudhost_update(self, volume_uuid, up_type):
+        sql = "update cloudhost set status='%s' where " \
+              "uuid='%s'" % (up_type, volume_uuid)
+
+        return super(ComputeDB, self).exec_update_sql(sql)
+
+
+class KeypairDB(MysqlInit):
+    def __init__(self):
+        super(KeypairDB, self).__init__()
+
+    def keypair_create(self, keypair_uuid, fingerprint, keypair_name,
+                       private_key, public_key):
+        sql = "insert into keypair(uuid, fingerprint, keypair_name, " \
+              "private_key, public_key) values ('%s', '%s', '%s', '%s', " \
+              "'%s')" % (keypair_uuid, fingerprint, keypair_name,
+                         private_key, public_key)
+
+        return super(KeypairDB, self).exec_update_sql(sql)
+
+    def keypair_list(self):
+        sql = "select uuid as keypair_uuid, fingerprint, keypair_name," \
+              "private_key, public_key, create_time from keypair"
+
+        return super(KeypairDB, self).exec_select_sql(sql)
+
+    def keypair_detail(self, keypair_uuid):
+        sql = "select uuid as keypair_uuid, fingerprint, keypair_name," \
+              "private_key, public_key, create_time from keypair where " \
+              "uuid='%s'" % (keypair_uuid)
+
+        return super(KeypairDB, self).exec_select_sql(sql)
+
+    def keypair_delete(self, keypair_uuid):
+        sql = "delete from keypair where uuid='%s'" % keypair_uuid
+
+        return super(KeypairDB, self).exec_update_sql(sql)
+
+    def keypair_update(self):
+        pass

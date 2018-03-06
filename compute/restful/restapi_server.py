@@ -20,7 +20,7 @@ def compute_server():
         except Exception, e:
             log.error('compute server start error, reason is: %s' % e)
 
-        time.sleep(7)
+        time.sleep(5)
 
 
 if __name__ == '__main__':
