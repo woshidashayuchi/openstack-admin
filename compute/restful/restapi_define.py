@@ -121,6 +121,20 @@ class CloudhostApi(Resource):
         #: only.
         instance_name = resource.Body('OS-EXT-SRV-ATTR:instance_name')
         '''
+        # recover
+        if request.args.get('recover') == 'yes':
+            print '++++-----'
+            try:
+                cloudhost_uuid = json.loads(request.get_data()).\
+                    get('cloudhost_uuid')
+            except Exception, e:
+                log.error('parameters error, reason is: %s' % e)
+                return request_result(101)
+            result = self.manager.recover(cloudhost_uuid)
+
+            return result
+
+        # create a new cloudhost
         try:
             parameters = json.loads(request.get_data())
 
@@ -189,7 +203,8 @@ class ClouhostRouteApi(Resource):
             except Exception, e:
                 log.error('parameters error when update instance(reboot), '
                           'reason is: %s' % e)
-                request_result(101)
+                return request_result(101)
+            return result
 
         if up_type == 'attach':
             try:
@@ -201,7 +216,7 @@ class ClouhostRouteApi(Resource):
             except Exception, e:
                 log.error('parameters error when update instance(reboot), '
                           'reason is: %s' % e)
-                request_result(101)
+                return request_result(101)
 
             return result
 
@@ -243,7 +258,7 @@ class KeypairRouteApi(Resource):
         result = self.manager.delete(keypair_uuid)
         return result
 
-    def update(self, keypair_uuid):
+    def put(self, keypair_uuid):
         pass
 
 

@@ -10,6 +10,17 @@ clouds:
       image_name: fedora-20.x86_64
       flavor_name: m1.small
       network_name: private
+  admin:
+    region_name: RegionOne
+    auth:
+      auth_url: http://172.20.2.12:5000/v2.0/
+      username: admin
+      password: qwe123
+      project_name: demo
+    example:
+      image_name: fedora-20.x86_64
+      flavor_name: m1.small
+      network_name: private
   rackspace:
     cloud: rackspace
     auth:

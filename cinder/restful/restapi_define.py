@@ -6,8 +6,9 @@ from flask import request
 from flask_restful import Resource
 from common.logs import logging as log
 from common.request_result import request_result
-from manager.cinder_manager import CinderManager, CinderRouteManager, \
-     VolumeType, VolumeRouteType, Snapshot, SnapshotRoute
+from manager.cinder_manager import CinderManager, CinderRouteManager
+from manager.type_manager import VolumeTypeManager, VolumeRouteTypeManager
+from manager.snapshot_manager import SnapshotManager, SnapshotRouteManager
 
 
 # volume
@@ -83,7 +84,7 @@ class CinderRouteApi(Resource):
 # types
 class TypeApi(Resource):
     def __init__(self):
-        self.volume_type = VolumeType()
+        self.volume_type = VolumeTypeManager()
 
     def post(self):
         try:
@@ -105,7 +106,7 @@ class TypeApi(Resource):
 
 class TypeRouteApi(Resource):
     def __init__(self):
-        self.volume_type = VolumeRouteType()
+        self.volume_type = VolumeRouteTypeManager()
 
     def get(self, type_uuid):
         result = self.volume_type.detail(type_uuid)
@@ -121,7 +122,7 @@ class TypeRouteApi(Resource):
 
 class SnapshotApi(Resource):
     def __init__(self):
-        self.snapshot = Snapshot()
+        self.snapshot = SnapshotManager()
 
     def get(self):
         result = self.snapshot.list()
@@ -147,7 +148,7 @@ class SnapshotApi(Resource):
 
 class SnapshotRouteApi(Resource):
     def __init__(self):
-        self.snapshot = SnapshotRoute()
+        self.snapshot = SnapshotRouteManager()
 
     def get(self, snapshot_uuid):
         result = self.snapshot.detail(snapshot_uuid)

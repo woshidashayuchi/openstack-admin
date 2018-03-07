@@ -45,6 +45,7 @@ class DBInit(object):
                       Column('net_interface', String(64)),
                       Column('security_groups', String(64)),
                       Column('keypair', String(64)),
+                      Column('flavor_id', String(64)),
                       Column('status', String(64)),
                       Column('power_state', String(64)),
                       Column('create_time', TIMESTAMP(True)),

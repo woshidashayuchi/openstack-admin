@@ -4,7 +4,7 @@
 from common import conf
 from common.logs import logging as log
 from sqlalchemy import MetaData, Table, create_engine, func
-from sqlalchemy import String, Column, Integer, DateTime
+from sqlalchemy import String, Column, Integer, TIMESTAMP
 
 
 class DBInit(object):
@@ -45,8 +45,8 @@ class DBInit(object):
                    Column('is_use_domain', String(64)),
                    Column('is_start', Integer),
                    Column('is_secret', Integer),
-                   Column('create_time', DateTime,
-                          server_default=func.now()))
+                   Column('create_time', TIMESTAMP(True),
+                          server_default=func.now(), nullable=False))
 
     volume_type = Table('volume_type', metadata,
                         Column('uuid', String(64), primary_key=True),
@@ -55,8 +55,8 @@ class DBInit(object):
                         Column('description', String(256)),
                         Column('extra_specs', String(64)),
                         Column('is_public', Integer),
-                        Column('create_time', DateTime,
-                               server_default=func.now()))
+                        Column('create_time', TIMESTAMP(True),
+                               server_default=func.now(), nullable=False))
 
     snapshot = Table('snapshot', metadata,
                      Column('uuid', String(64), primary_key=True),
@@ -67,8 +67,8 @@ class DBInit(object):
                      Column('size', Integer),
                      Column('volume_uuid', String(64)),
                      Column('is_forced', String(32)),
-                     Column('create_time', DateTime,
-                            server_default=func.now()))
+                     Column('create_time', TIMESTAMP(True),
+                            server_default=func.now(), nullable=False))
 
     metadata.create_all(engine)
 

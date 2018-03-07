@@ -26,4 +26,7 @@ def app_run():
 
     api.add_resource(restapi_define.NetworkToServerApi,
                      '/api/v1.0/compute/others')
+
+    # api.add_resource(restapi_define.PasswordApi,
+    #                  '/api/v1.0/compute/password')
     app.run(host='0.0.0.0', port=9998, threaded=True, debug=True)

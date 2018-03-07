@@ -23,6 +23,14 @@ class CloudhostManager(object):
 
         return result.rstrip(',')
 
+    @staticmethod
+    def string_change(security_groups):
+        result = []
+        for security_group in security_groups.split(','):
+            result.append({'name': security_group})
+
+        return result
+
     def create(self, instance_name, availability_zone, instance_num, image,
                instance_cpu, instance_mem, instance_type, net, net_interface,
                flavor_id, security_groups, keypair):
@@ -39,6 +47,7 @@ class CloudhostManager(object):
         :param flavor_id:
         :param security_groups:
         :param keypair:
+        :param flavor_id:
         :return:
         '''
         try:
@@ -75,6 +84,7 @@ class CloudhostManager(object):
                                  security_groups=self.
                                  list_change(security_groups),
                                  keypair=keypair,
+                                 flavor_id=flavor_id,
                                  status=None,
                                  power_state=None)
         except Exception, e:
@@ -118,6 +128,56 @@ class CloudhostManager(object):
 
         return request_result(200, result)
 
+    def recover(self, cloudhost_uuid):
+        '''
+        :param cloudhost_uuid: uuid of cloudhost
+        :return: dict
+        '''
+        cloudhost_route = CloudhostRouteManager()
+        cloudhost_detail = cloudhost_route.detail(cloudhost_uuid)
+        if cloudhost_detail.get('status') != 200:
+            return cloudhost_detail
+        else:
+            # create new cloudhost for recover
+            cloudhost_detail = cloudhost_detail.get('result')
+            instance_name = cloudhost_detail.get('instance_name')
+            availability_zone = cloudhost_detail.get('availability_zone')
+            instance_num = cloudhost_detail.get('instance_num')
+            image = cloudhost_detail.get('image')
+            instance_cpu = cloudhost_detail.get('instance_cpu')
+            instance_mem = cloudhost_detail.get('instance_mem')
+            instance_type = cloudhost_detail.get('instance_type')
+            net = cloudhost_detail.get('net')
+            net_interface = cloudhost_detail.get('net_interface')
+            flavor_id = cloudhost_detail.get('flavor_id')
+            security_groups = self.string_change(cloudhost_detail.
+                                                 get('security_groups'))
+            keypair = cloudhost_detail.get('keypair')
+
+            result = self.create(instance_name=instance_name,
+                                 availability_zone=availability_zone,
+                                 instance_num=instance_num,
+                                 image=image,
+                                 instance_cpu=instance_cpu,
+                                 instance_mem=instance_mem,
+                                 instance_type=instance_type,
+                                 net=net,
+                                 net_interface=net_interface,
+                                 flavor_id=flavor_id,
+                                 security_groups=security_groups,
+                                 keypair=keypair)
+            if result.get('status') != 200:
+                return result
+            # delete the old cloudhost from db
+            try:
+                self.db.cloudhost_old_delete(cloudhost_uuid)
+            except Exception, e:
+                log.error('delete the old cloudhost(db) error, '
+                          'reason is: %s' % e)
+                return request_result(404)
+
+            return request_result(200, result.get('result'))
+
 
 class CloudhostRouteManager(object):
 
@@ -144,7 +204,14 @@ class CloudhostRouteManager(object):
                 result['status'] = host[6]
                 result['availability_zone'] = host[7]
                 result['power_state'] = host[8]
-                result['create_time'] = time_diff(host[9])
+                result['instance_num'] = host[9]
+                result['instance_cpu'] = host[10]
+                result['instance_mem'] = host[11]
+                result['net'] = host[12]
+                result['net_interface'] = host[13]
+                result['security_groups'] = host[14]
+                result['flavor_id'] = host[15]
+                result['create_time'] = time_diff(host[16])
 
         return request_result(200, result)
 
