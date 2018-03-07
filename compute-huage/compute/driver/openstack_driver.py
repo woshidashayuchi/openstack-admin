@@ -45,7 +45,7 @@ class OpenstackDriver(object):
         # return result
 
     def create(self, availzone_uuid, image_uuid, vm_name, nic_list,
-               security_groups=None, keypair=None):
+               security_groups=None, keypair=None, flavor_id='2'):
         '''
 
         :param availzone_uuid: 目前亲测方法用的是可用域的名称，id暂不知可否使用
@@ -54,6 +54,7 @@ class OpenstackDriver(object):
         :param nic_list: 网络列表。[{'uuid':'net01-uuid'},{'uuid': 'net02-uuid'}]
         :param security_groups [{'name':''},{'name':''}]可选
         :param key_name 可选
+        :flavor_id: 规格
         :return: .result为新建实例的object
         '''
         try:
@@ -64,7 +65,7 @@ class OpenstackDriver(object):
                                       # security_groups=security_groups,
                                       networks=nic_list,
                                       # key_name=keypair,
-                                      flavor_id="2"  # str
+                                      flavor_id=flavor_id  # str
                                       )
         except Exception, e:
             log.error('create the cloudhost(op) error, reason is: %s' % e)
