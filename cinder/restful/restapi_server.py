@@ -8,6 +8,7 @@ path2 = sys.path[0] + '/../..'
 sys.path.append(path1)
 sys.path.append(path2)
 from db.db_init import DBInit
+from db.data_init import DataInit
 from restapi_register import app_run
 from common.logs import logging as log
 import time

@@ -16,6 +16,7 @@ from common.request_result import request_result
 
 import openstack
 
+
 class BaseManager(object):
 
     def __init__(self):

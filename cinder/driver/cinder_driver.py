@@ -10,6 +10,7 @@ from common import conf
 import requests
 from common.logs import logging as log
 from common.request_result import request_result
+import json
 
 
 class CinderDriver(object):
@@ -19,8 +20,7 @@ class CinderDriver(object):
 
     def update_volume(self, token, up_dict):
         cinder_url = conf.cinder_url + \
-                     'c5aea850b5f344e5828c103fc9a02b1a/volumes/' + \
-                     up_dict['volume_uuid']
+                     'c5aea850b5f344e5828c103fc9a02b1a/volumes/'+up_dict['volume_uuid']
         parameters_dict = {
                             "volume": {}
                           }
@@ -30,14 +30,15 @@ class CinderDriver(object):
         if 'description' in up_dict.keys():
             parameters_dict['volume']['description'] = up_dict['description']
 
-        headers = {"User-Agent": "python-keystoneclient",
-                   "X-Auth-Token": token}
+        headers = {"User-Agent": "python-keystoneclient", "X-Auth-Token": token}
         try:
             print cinder_url
+            print parameters_dict
             result = requests.put(url=cinder_url,
                                   json=parameters_dict,
                                   headers=headers, timeout=10)
-            # result = requests.get(cinder_url, headers=headers).text
+            # result = requests.get(cinder_url+'/metadata', headers=headers)
+
         except Exception, e:
             log.error('update the volume(op) error, reason is: %s' % e)
             return request_result(602)

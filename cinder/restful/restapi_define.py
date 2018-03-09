@@ -6,9 +6,11 @@ from flask import request
 from flask_restful import Resource
 from common.logs import logging as log
 from common.request_result import request_result
+from common.token_auth import token_auth
+from common.parameters import context_data
+from common.skill import use_time
 from manager.cinder_manager import CinderManager, CinderRouteManager
 from manager.type_manager import VolumeTypeManager, VolumeRouteTypeManager
-from manager.snapshot_manager import SnapshotManager, SnapshotRouteManager
 
 
 # volume
@@ -17,12 +19,27 @@ class CinderApi(Resource):
         self.cinder = CinderManager()
 
     # create a new volume
+    @use_time
     def post(self):
+        try:
+            token = request.headers.get('token')
+            token_auth(token)
+            source_ip = request.headers.get('X-Real-IP')
+            if source_ip is None:
+                source_ip = request.remote_addr
+        except Exception, e:
+            log.error('Token check error, reason=%s' % e)
+
+            return request_result(201)
+
         try:
             parameters = json.loads(request.get_data())
         except Exception, e:
             log.error('create the volume(param) error, reason is: %s' % e)
             return request_result(101)
+        # context:
+        # 在进行manager的相关调度与操作时候，提供权限判断，token提取等功能
+        context = context_data(token, "vol_vol_pro_com", "create", source_ip)
 
         name = parameters.get('name')
         size = parameters.get('size')
@@ -32,27 +49,38 @@ class CinderApi(Resource):
         is_use_domain = parameters.get('is_use_domain')
         is_start = parameters.get('is_start')
         is_secret = parameters.get('is_secret')
-        user_uuid = parameters.get('user_uuid')
+        # user_uuid = parameters.get('user_uuid')
 
-        result = self.cinder.create(name=name,
-                                    size=size,
-                                    is_start=is_start,
-                                    description=description,
-                                    v_type=v_type,
-                                    conn_to=conn_to,
-                                    is_use_domain=is_use_domain,
-                                    is_secret=is_secret,
-                                    user_uuid=user_uuid)
+        result = self.cinder.volume_create(context=context,
+                                           name=name,
+                                           size=size,
+                                           is_start=is_start,
+                                           description=description,
+                                           v_type=v_type,
+                                           conn_to=conn_to,
+                                           is_use_domain=is_use_domain,
+                                           is_secret=is_secret)
 
         return result
 
     # get all volumes list
     def get(self):
-        user_uuid = request.args.get('user_uuid')
-        if user_uuid is None:
+        try:
+            token = request.headers.get('token')
+            token_auth(token)
+        except Exception, e:
+            log.error('Token check error, reason=%s' % e)
+            return request_result(201)
+
+        try:
+            page_size = int(request.args.get('page_size'))
+            page_num = int(request.args.get('page_num'))
+        except Exception, e:
+            log.error('page_size or page_num error, reason is: %s' % e)
             return request_result(101)
 
-        result = self.cinder.list(user_uuid)
+        context = context_data(token, "vol_vol_usr_com", "read")
+        result = self.cinder.volume_list(context, page_size, page_num)
 
         return result
 
@@ -63,20 +91,59 @@ class CinderRouteApi(Resource):
 
     def put(self, volume_uuid):
         try:
+            token = request.headers.get('token')
+            token_auth(token)
+            source_ip = request.headers.get('X-Real-IP')
+            if source_ip is None:
+                source_ip = request.remote_addr
+        except Exception, e:
+            log.error('Token check error, reason=%s' % e)
+
+            return request_result(201)
+
+        context = context_data(token, volume_uuid, "update", source_ip)
+
+        try:
             up_dict = json.loads(request.get_data())
         except Exception, e:
             log.error('request parameters(url) error, reason is: %s' % e)
             return request_result(101)
 
-        result = self.cinder.update(up_dict, volume_uuid)
+        result = self.cinder.volume_update(context, up_dict, volume_uuid)
         return result
 
     def delete(self, volume_uuid):
-        result = self.cinder.delete(volume_uuid)
+        logic = 1
+        try:
+            token = request.headers.get('token')
+            token_auth(token)
+            source_ip = request.headers.get('X-Real-IP')
+            if source_ip is None:
+                source_ip = request.remote_addr
+        except Exception, e:
+            log.error('Token check error, reason=%s' % e)
+            return request_result(201)
+        try:
+            req_logic = int(request.args.get('logic'))
+            logic = req_logic
+        except Exception, e:
+            log.error('get the logic value error')
+            return request_result(101)
+
+        context = context_data(token, volume_uuid, "delete", source_ip)
+
+        result = self.cinder.volume_delete(context, volume_uuid, logic=logic)
         return result
 
     def get(self, volume_uuid):
-        result = self.cinder.detail(volume_uuid)
+        try:
+            token = request.headers.get('token')
+            token_auth(token)
+        except Exception, e:
+            log.error('Token check error, reason=%s' % e)
+            return request_result(201)
+        context = context_data(token, volume_uuid, "read")
+        result = self.cinder.volume_detail(context, volume_uuid)
 
         return result
 
@@ -122,10 +189,10 @@ class TypeRouteApi(Resource):
 
 class SnapshotApi(Resource):
     def __init__(self):
-        self.snapshot = SnapshotManager()
+        self.snapshot = CinderManager()
 
     def get(self):
-        result = self.snapshot.list()
+        result = self.snapshot.snap_list()
         return result
 
     def post(self):
@@ -140,22 +207,22 @@ class SnapshotApi(Resource):
         metadata = param.get('metadata')
         volume_uuid = param.get('volume_uuid')
 
-        result = self.snapshot.create(name=name, description=description,
-                                      metadata=metadata,
-                                      volume_uuid=volume_uuid)
+        result = self.snapshot.snap_create(name=name, description=description,
+                                           metadata=metadata,
+                                           volume_uuid=volume_uuid)
         return result
 
 
 class SnapshotRouteApi(Resource):
     def __init__(self):
-        self.snapshot = SnapshotRouteManager()
+        self.snapshot = CinderRouteManager()
 
     def get(self, snapshot_uuid):
-        result = self.snapshot.detail(snapshot_uuid)
+        result = self.snapshot.snap_detail(snapshot_uuid)
         return result
 
     def delete(self, snapshot_uuid):
-        result = self.snapshot.delete(snapshot_uuid)
+        result = self.snapshot.snap_delete(snapshot_uuid)
         return result
 
     def put(self):

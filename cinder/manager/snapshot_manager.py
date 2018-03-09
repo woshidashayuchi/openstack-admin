@@ -17,6 +17,14 @@ class SnapshotManager(object):
 
     @use_time
     def create(self, name, description, metadata, volume_uuid):
+        '''
+        Parameters:
+        :param name:
+        :param description:
+        :param metadata: object
+        :param volume_uuid:
+        :return:
+        '''
         try:
             op_result = self.conn.block_storage.\
                 create_snapshot(name=name, description=description,

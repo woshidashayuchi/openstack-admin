@@ -33,7 +33,7 @@ class DBInit(object):
     metadata = MetaData(engine)
     volume = Table('volume', metadata,
                    Column('uuid', String(64), primary_key=True),
-                   Column('domain_uuid', String(64)),
+                   Column('team_uuid', String(64)),
                    Column('project_uuid', String(64)),
                    Column('user_uuid', String(64)),
                    Column('name', String(128)),
@@ -67,11 +67,26 @@ class DBInit(object):
                      Column('size', Integer),
                      Column('volume_uuid', String(64)),
                      Column('is_forced', String(32)),
+                     Column('is_show', Integer),
                      Column('create_time', TIMESTAMP(True),
                             server_default=func.now(), nullable=False))
+
+    resources_acl = Table('resources_acl', metadata,
+                          Column('resource_uuid', String(64),
+                                 primary_key=True),
+                          Column('resource_type', String(64)),
+                          Column('admin_uuid', String(64)),
+                          Column('team_uuid', String(64)),
+                          Column('project_uuid', String(64)),
+                          Column('user_uuid', String(64)),
+                          Column('create_time', TIMESTAMP(True),
+                                 nullable=False),
+                          Column('update_time', TIMESTAMP(True),
+                                 server_default=func.now(), nullable=False))
 
     metadata.create_all(engine)
 
     Table('volume', metadata, autoload=True)
     Table('volume_type', metadata, autoload=True)
     Table('snapshot', metadata, autoload=True)
+    Table('resources_acl', metadata, autoload=True)
