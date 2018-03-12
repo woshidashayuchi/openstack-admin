@@ -8,7 +8,6 @@ from common.logs import logging as log
 from common.request_result import request_result
 from common.token_auth import token_auth
 from common.parameters import context_data
-from common.skill import use_time
 from manager.cinder_manager import CinderManager, CinderRouteManager
 from manager.type_manager import VolumeTypeManager, VolumeRouteTypeManager
 
@@ -19,7 +18,6 @@ class CinderApi(Resource):
         self.cinder = CinderManager()
 
     # create a new volume
-    @use_time
     def post(self):
         try:
             token = request.headers.get('token')
@@ -84,6 +82,30 @@ class CinderApi(Resource):
 
         return result
 
+    # 批量删除
+    # def delete(self):
+    #     try:
+    #         token = request.headers.get('token')
+    #         token_auth(token)
+    #         source_ip = request.headers.get('X-Real-IP')
+    #         if source_ip is None:
+    #             source_ip = request.remote_addr
+    #     except Exception, e:
+    #         log.error('Token check error, reason=%s' % e)
+    #         return request_result(201)
+    #     try:
+    #         req_logic = int(request.args.get('logic'))
+    #         logic = req_logic
+    #     except Exception, e:
+    #         log.error('get the logic value error')
+    #         return request_result(101)
+    #     volume_uuid_list = request.get_data().get('volumes_uuid')
+    #
+    #     context = context_data(token, volume_uuid_list, "update", source_ip)
+    #     result = self.cinder.volumes_delete(context, volume_uuid_list,
+    #                                         logic=logic)
+    #     return result
+
 
 class CinderRouteApi(Resource):
     def __init__(self):
@@ -109,11 +131,9 @@ class CinderRouteApi(Resource):
             log.error('request parameters(url) error, reason is: %s' % e)
             return request_result(101)
 
-        result = self.cinder.volume_update(context, up_dict, volume_uuid)
-        return result
+        return self.cinder.volume_update(context, up_dict, volume_uuid)
 
     def delete(self, volume_uuid):
-        logic = 1
         try:
             token = request.headers.get('token')
             token_auth(token)
@@ -127,7 +147,7 @@ class CinderRouteApi(Resource):
             req_logic = int(request.args.get('logic'))
             logic = req_logic
         except Exception, e:
-            log.error('get the logic value error')
+            log.error('get the logic value error, reason is: %s' % e)
             return request_result(101)
 
         context = context_data(token, volume_uuid, "delete", source_ip)
@@ -155,6 +175,17 @@ class TypeApi(Resource):
 
     def post(self):
         try:
+            token = request.headers.get('token')
+            token_auth(token)
+            source_ip = request.headers.get('X-Real-IP')
+            if source_ip is None:
+                source_ip = request.remote_addr
+        except Exception, e:
+            log.error('Token check error, reason=%s' % e)
+
+            return request_result(201)
+
+        try:
             param = json.loads(request.get_data())
         except Exception, e:
             log.error('parameters error, reason is: %s' % e)
@@ -167,6 +198,13 @@ class TypeApi(Resource):
         return result
 
     def get(self):
+        try:
+            page_size = int(request.args.get('page_size'))
+            page_num = int(request.args.get('page_num'))
+        except Exception, e:
+            log.error('page_size or page_num error, reason is: %s' % e)
+            return request_result(101)
+
         result = self.volume_type.list()
         return result
 
@@ -192,10 +230,38 @@ class SnapshotApi(Resource):
         self.snapshot = CinderManager()
 
     def get(self):
-        result = self.snapshot.snap_list()
+        try:
+            token = request.headers.get('token')
+            token_auth(token)
+        except Exception, e:
+            log.error('Token check error, reason=%s' % e)
+            return request_result(201)
+
+        try:
+            page_size = int(request.args.get('page_size'))
+            page_num = int(request.args.get('page_num'))
+        except Exception, e:
+            log.error('page_size or page_num error, reason is: %s' % e)
+            return request_result(101)
+
+        context = context_data(token, "vol_snap_usr_com", "read")
+        result = self.snapshot.snap_list(context,
+                                         page_num=page_num,
+                                         page_size=page_size)
         return result
 
     def post(self):
+        try:
+            token = request.headers.get('token')
+            token_auth(token)
+            source_ip = request.headers.get('X-Real-IP')
+            if source_ip is None:
+                source_ip = request.remote_addr
+        except Exception, e:
+            log.error('Token check error, reason=%s' % e)
+
+            return request_result(201)
+
         try:
             param = json.loads(request.get_data())
         except Exception, e:
@@ -207,7 +273,10 @@ class SnapshotApi(Resource):
         metadata = param.get('metadata')
         volume_uuid = param.get('volume_uuid')
 
-        result = self.snapshot.snap_create(name=name, description=description,
+        context = context_data(token, 'vol_snap_pro_com', 'create', source_ip)
+        result = self.snapshot.snap_create(context=context,
+                                           name=name,
+                                           description=description,
                                            metadata=metadata,
                                            volume_uuid=volume_uuid)
         return result
@@ -217,13 +286,47 @@ class SnapshotRouteApi(Resource):
     def __init__(self):
         self.snapshot = CinderRouteManager()
 
+    # detail
     def get(self, snapshot_uuid):
-        result = self.snapshot.snap_detail(snapshot_uuid)
+        try:
+            token = request.headers.get('token')
+            token_auth(token)
+        except Exception, e:
+            log.error('Token check error, reason=%s' % e)
+
+            return request_result(201)
+        context = context_data(token, snapshot_uuid, "read")
+        result = self.snapshot.snap_detail(context, snapshot_uuid)
         return result
 
     def delete(self, snapshot_uuid):
-        result = self.snapshot.snap_delete(snapshot_uuid)
+        try:
+            token = request.headers.get('token')
+            token_auth(token)
+            source_ip = request.headers.get('X-Real-IP')
+            if source_ip is None:
+                source_ip = request.remote_addr
+        except Exception, e:
+            log.error('Token check error, reason=%s' % e)
+            return request_result(201)
+        context = context_data(token, snapshot_uuid, "delete", source_ip)
+        result = self.snapshot.snap_delete(context, snapshot_uuid)
         return result
 
-    def put(self):
-        pass
+    def put(self, snapshot_uuid):
+        try:
+            token = request.headers.get('token')
+            token_auth(token)
+            source_ip = request.headers.get('X-Real-IP')
+            if source_ip is None:
+                source_ip = request.remote_addr
+        except Exception, e:
+            log.error('Token check error, reason=%s' % e)
+            return request_result(201)
+        try:
+            up_dict = json.loads(request.get_data())
+        except Exception, e:
+            log.error('get the body parameters error, reason is: %s' % e)
+            return request_result(101)
+        context = context_data(token, snapshot_uuid, "update", source_ip)
+        return self.snapshot.snap_update(context, up_dict, snapshot_uuid)

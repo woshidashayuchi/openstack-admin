@@ -3,7 +3,7 @@
 # Time: 2018/3/8 10:20
 from db.cinder_db import CinderDB
 from driver.cinder_driver import CinderDriver
-from driver.auth_driver import get_token
+# from driver.auth_driver import get_token
 from common.logs import logging as log
 from common.request_result import request_result
 from common.skill import time_diff, use_time
@@ -102,9 +102,9 @@ class VolumeManager(object):
             log.error('create the volume(db) error, reason is: %s' % e)
             return request_result(401)
 
-        log.info('op: %s, db: %s' % (op_result.id, db_result))
+        log.info('op: %s, db: %s' % (op_result, db_result))
 
-        return request_result(200, {'resource_uuid': op_result.id})
+        return request_result(200, {'resource_uuid': op_result})
 
     def list(self, user_uuid, team_uuid, team_priv,
              project_uuid, project_priv, page_size, page_num):
@@ -159,6 +159,12 @@ class VolumeManager(object):
 
         return request_result(200, result)
 
+    def logic_delete(self, volume_uuid):
+        pass
+
+    def delete(self, volume_uuid):
+        pass
+
 
 class VolumeRouteManager(object):
 
@@ -205,7 +211,7 @@ class VolumeRouteManager(object):
             return request_result(404)
 
         log.info('op_result: %s, db_result: %s' % (op_result, db_result))
-        return request_result(200, 'the volume deleted')
+        return request_result(200, {'volume_uuid': volume_uuid})
 
     def detail(self, volume_uuid):
         result = dict()
@@ -233,21 +239,24 @@ class VolumeRouteManager(object):
 
     def update(self, up_dict, volume_uuid):
         # update volume(op)
-        token = get_token('demo', 'qwe123')
-        if token.get('status') != 200:
-            return request_result(801)
-        token = token.get('result').get('token')
+        op_token = self.op_driver.get_token('demo', 'qwe123')
+        if op_token.get('status') != 200:
+            return op_token
+
+        token = op_token.get('result').get('token')
         up_dict['volume_uuid'] = volume_uuid
         result = self.cinder.update_volume(token, up_dict)
         if result.get('status') != 200:
             return result
 
         # update volume(db)
-        # try:
-        #     self.db.volume_update(up_dict, volume_uuid)
-        # except Exception, e:
-        #     log.error('update the database error, reason is: %s' % e)
-        #     return request_result(402)
+        try:
+            self.db.volume_update(up_dict, volume_uuid)
+        except Exception, e:
+            log.error('update the database error, reason is: %s' % e)
+            return request_result(402)
+
+        return request_result(200, {'resource_uuid': volume_uuid})
 
 
 def volume_expire_delete():

@@ -7,6 +7,8 @@ from common.logs import logging as log
 from common.request_result import request_result
 from common.skill import time_diff, use_time, parameters_check
 from common.connect import connection
+from driver.openstack_driver import OpenstackDriver
+from driver.cinder_driver import CinderDriver
 
 
 class SnapshotManager(object):
@@ -15,8 +17,8 @@ class SnapshotManager(object):
         self.conn = connection()
         self.db = CinderDB()
 
-    @use_time
-    def create(self, name, description, metadata, volume_uuid):
+    def create(self, name, description, metadata, volume_uuid, team_uuid,
+               project_uuid, user_uuid):
         '''
         Parameters:
         :param name:
@@ -41,26 +43,53 @@ class SnapshotManager(object):
 
         try:
             db_result = self.db.\
-                snapshot_create(snapshot_uuid=snapshot_uuid, name=name,
-                                description=description, status=status,
-                                metadata=metadata, size=size,
-                                volume_uuid=volume_uuid, is_forced=is_forced)
+                snapshot_create(snapshot_uuid=snapshot_uuid,
+                                name=name,
+                                description=description,
+                                status=status,
+                                metadata=metadata,
+                                size=size,
+                                volume_uuid=volume_uuid,
+                                is_forced=is_forced,
+                                user_uuid=user_uuid,
+                                project_uuid=project_uuid,
+                                team_uuid=team_uuid)
         except Exception, e:
             log.error('create the snapshot(db) error, reason is: %s' % e)
             return request_result(401)
 
         log.info('op_result:%s, db_result: %s' % (op_result, db_result))
 
-        return request_result(200, 'snapshot creating')
+        return request_result(200, {'resource_uuid': snapshot_uuid})
 
-    def list(self):
+    def list(self, user_uuid, team_uuid, team_priv,
+             project_uuid, project_priv, page_size, page_num):
         result = []
         try:
-            db_result = self.db.snapshot_list()
+            if ((project_priv is not None) and ('R' in project_priv)) \
+               or ((team_priv is not None) and ('R' in team_priv)):
+                db_result = self.db.snap_list_project(team_uuid,
+                                                        project_uuid,
+                                                        page_size,
+                                                        page_num)
+            else:
+                db_result = self.db.snap_list(team_uuid,
+                                                project_uuid,
+                                                user_uuid,
+                                                page_size,
+                                                page_num)
+
         except Exception, e:
-            log.error('get the snapshot(db) error, reason is: %s' % e)
+            log.error('Database select error, reason=%s' % e)
             return request_result(403)
 
+        # try:
+        #     db_result = self.db.snapshot_list()
+        # except Exception, e:
+        #     log.error('get the snapshot(db) error, reason is: %s' % e)
+        #     return request_result(403)
+        log.info('++++++')
+        log.info(db_result)
         if len(db_result) != 0:
             for snapshot in db_result:
                 snapshot_uuid = snapshot[0]
@@ -90,6 +119,8 @@ class SnapshotRouteManager(object):
     def __init__(self):
         self.db = CinderDB()
         self.conn = connection()
+        self.op_driver = OpenstackDriver()
+        self.cinder = CinderDriver()
 
     def detail(self, snapshot_uuid):
         result = dict()
@@ -132,5 +163,22 @@ class SnapshotRouteManager(object):
 
         return request_result(200, 'snapshot delete success')
 
-    def update(self):
-        pass
+    def update(self, up_dict, snapshot_uuid):
+        op_token = self.op_driver.get_token('demo', 'qwe123')
+        if op_token.get('status') != 200:
+            return op_token
+
+        token = op_token.get('result').get('token')
+        up_dict['snapshot_uuid'] = snapshot_uuid
+        result = self.cinder.update_snapshot(token, up_dict)
+        if result.get('status') != 200:
+            return result
+
+        # update db
+        try:
+            db_result = self.db.snapshot_update(up_dict, snapshot_uuid)
+        except Exception, e:
+            log.error('update the snapshot(db) error, reason is: %s' % e)
+            return request_result(402)
+
+        return request_result(200, {'resource_uuid': snapshot_uuid})

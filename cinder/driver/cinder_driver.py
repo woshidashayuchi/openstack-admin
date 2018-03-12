@@ -10,7 +10,9 @@ from common import conf
 import requests
 from common.logs import logging as log
 from common.request_result import request_result
-import json
+# import json
+# from auth_driver import get_token
+from openstack_driver import OpenstackDriver
 
 
 class CinderDriver(object):
@@ -20,7 +22,8 @@ class CinderDriver(object):
 
     def update_volume(self, token, up_dict):
         cinder_url = conf.cinder_url + \
-                     'c5aea850b5f344e5828c103fc9a02b1a/volumes/'+up_dict['volume_uuid']
+                     'volumes/' + \
+                     up_dict['volume_uuid']
         parameters_dict = {
                             "volume": {}
                           }
@@ -30,10 +33,8 @@ class CinderDriver(object):
         if 'description' in up_dict.keys():
             parameters_dict['volume']['description'] = up_dict['description']
 
-        headers = {"User-Agent": "python-keystoneclient", "X-Auth-Token": token}
+        headers = {"X-Auth-Token": token}
         try:
-            print cinder_url
-            print parameters_dict
             result = requests.put(url=cinder_url,
                                   json=parameters_dict,
                                   headers=headers, timeout=10)
@@ -49,12 +50,43 @@ class CinderDriver(object):
 
         return request_result(200, 'update success')
 
+    def update_snapshot(self, token, up_dict):
+        cinder_url = conf.cinder_url + \
+                     'snapshots/' + \
+                     up_dict['snapshot_uuid']
+        parameters_dict = {
+            "snapshot": {}
+        }
+        if 'name' in up_dict.keys():
+            parameters_dict['snapshot']['name'] = up_dict['name']
+        if 'description' in up_dict.keys():
+            parameters_dict['snapshot']['description'] = up_dict['description']
+        headers = {"X-Auth-Token": token}
+        try:
+            result = requests.put(url=cinder_url,
+                                  json=parameters_dict,
+                                  headers=headers, timeout=10)
+        except Exception, e:
+            log.error('update the snapshot(op) error, reason is: %s' % e)
+            return request_result(1002)
+
+        if result.status_code != 200:
+            log.error('update the volume result(op) is: %s' % result.text)
+            return request_result(1002)
+
+        return request_result(200, {'snapshot_uuid': up_dict['snapshot_uuid']})
 
 # test code
 if __name__ == '__main__':
-
+    token = OpenstackDriver.get_token(user_name='demo', password='qwe123')
+    log.info('---')
+    log.info(token)
     up = CinderDriver()
-    param_dict = {'volume_uuid': 'b438b74f-e994-4889-9be3-0fa9f33dbb8c',
-                  'name': 'test-test'}
-    result = up.update_volume('gAAAAABalRh69LWV_cl2a1zQ946kW27PWu90uDhvOq_AS9o80Cy8JOD8YiN35MjNhwxeksssCuuvBZwXuL81-4cN7dKXdk3y19ho6Ln5wSgFMq9ovxTD4Y2qCSErvVRo1TobIaK8nb5qSJL_HHMLozzvT1OlTBXgag', param_dict)
+    param_dict = {'volume_uuid': '2db1362d-a4cb-4cf9-97b5-306e8e5424ed',
+                  'name': 'test-for1'}
+    result = up.update_volume('gAAAAABapfW_zJw_jql68o1SVt4uFjIAqYnxNbH77PGomJo'
+                              'WHN1QxPZ8e4LoGt7pJ2pHQuWOQz9rTCBfkDV44Ix82k7NMX'
+                              'VtbMZqtATlpFyMQ91P3ldYVeY0oS6wDMy0TdP8Fxe2xGrr7'
+                              'qXy_cCImOYn4PRxMENSR1MQSkeTk7RfGOtxRBCI5k0',
+                              param_dict)
     # print result
