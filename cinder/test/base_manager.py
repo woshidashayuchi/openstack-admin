@@ -128,4 +128,4 @@ if __name__ == '__main__':
     # print ret.next()
     # print conn.block_storage.get_volume('4faed492-5285-4c97-a6c4-1d19dd42f635')
 
-    print conn.compute.create_keypair.__doc__
+    print conn.compute.create_volume_attachment.__doc__

@@ -69,15 +69,15 @@ class SnapshotManager(object):
             if ((project_priv is not None) and ('R' in project_priv)) \
                or ((team_priv is not None) and ('R' in team_priv)):
                 db_result = self.db.snap_list_project(team_uuid,
-                                                        project_uuid,
-                                                        page_size,
-                                                        page_num)
+                                                      project_uuid,
+                                                      page_size,
+                                                      page_num)
             else:
                 db_result = self.db.snap_list(team_uuid,
-                                                project_uuid,
-                                                user_uuid,
-                                                page_size,
-                                                page_num)
+                                              project_uuid,
+                                              user_uuid,
+                                              page_size,
+                                              page_num)
 
         except Exception, e:
             log.error('Database select error, reason=%s' % e)
@@ -88,8 +88,7 @@ class SnapshotManager(object):
         # except Exception, e:
         #     log.error('get the snapshot(db) error, reason is: %s' % e)
         #     return request_result(403)
-        log.info('++++++')
-        log.info(db_result)
+
         if len(db_result) != 0:
             for snapshot in db_result:
                 snapshot_uuid = snapshot[0]
@@ -180,5 +179,5 @@ class SnapshotRouteManager(object):
         except Exception, e:
             log.error('update the snapshot(db) error, reason is: %s' % e)
             return request_result(402)
-
+        log.debug('update the snapshot(db) result is: %s' % db_result)
         return request_result(200, {'resource_uuid': snapshot_uuid})

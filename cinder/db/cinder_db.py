@@ -64,9 +64,10 @@ class CinderDB(MysqlInit):
         return super(CinderDB, self).exec_select_sql(sql)
 
     def volume_create(self, name, size, description, v_type, conn_to=None,
-                      is_use_domain=None, is_start=0, is_secret=0,
-                      user_uuid=None, volume_uuid=None, project_uuid=None,
-                      team_uuid=None):
+                      snapshot_uuid=None, is_use_domain=None, is_start=0,
+                      is_secret=0, user_uuid=None, volume_uuid=None,
+                      project_uuid=None, team_uuid=None,
+                      source_volume_uuid=None):
 
         sql_acl = "insert into resources_acl(resource_uuid, resource_type," \
                   "admin_uuid, team_uuid, project_uuid, user_uuid) " \
@@ -78,54 +79,74 @@ class CinderDB(MysqlInit):
                                                               user_uuid)
 
         sql = "insert into volume(uuid, team_uuid, project_uuid, user_uuid, " \
-              "name, description, size, status, type, conn_to, is_use_domain, " \
-              "is_start, is_secret) VALUES ('%s', '%s', '%s', '%s', '%s', " \
-              "'%s', %d, %d, '%s', '%s', '%s', %d, %d)" % (volume_uuid,
-                                                           team_uuid,
-                                                           project_uuid,
-                                                           user_uuid,
-                                                           name,
-                                                           description,
-                                                           size,
-                                                           0,
-                                                           v_type,
-                                                           conn_to,
-                                                           is_use_domain,
-                                                           is_start,
-                                                           is_secret)
+              "name, description, size, status, type, conn_to, " \
+              "snapshot_uuid, source_volume_uuid, is_use_domain, is_start, " \
+              "is_secret) VALUES " \
+              "('%s', '%s', '%s', '%s', '%s', '%s', %d, '%s', '%s', '%s', " \
+              "'%s', '%s', '%s', %d, %d)" % (volume_uuid,
+                                       team_uuid,
+                                       project_uuid,
+                                       user_uuid,
+                                       name,
+                                       description,
+                                       size,
+                                       'creating',
+                                       v_type,
+                                       conn_to,
+                                       snapshot_uuid,
+                                       source_volume_uuid,
+                                       is_use_domain,
+                                       is_start,
+                                       is_secret)
 
         return super(CinderDB, self).exec_update_sql(sql_acl, sql)
 
     def volume_list(self, team_uuid, project_uuid, user_uuid, page_size,
                     page_num):
         start_position = (page_num - 1) * page_size
-        sql = "select uuid as volume_uuid, user_uuid, name, description, " \
-              "size, status, type, conn_to, is_use_domain, is_start, " \
-              "is_secret, create_time from volume where is_show=1 and " \
-              "user_uuid='%s' and project_uuid='%s' and " \
-              "team_uuid='%s' limit %d, %d" % (user_uuid, project_uuid,
-                                               team_uuid, start_position,
-                                               page_size)
+        sql = "select a.uuid as volume_uuid, a.name, a.description, " \
+              "a.size, a.status, a.type, a.conn_to, a.is_use_domain, " \
+              "a.is_start, a.is_secret, a.snapshot_uuid, " \
+              "a.source_volume_uuid, a.create_time from volume a, " \
+              "resources_acl b where a.is_show=1 and b.user_uuid='%s' " \
+              "and b.project_uuid='%s' and " \
+              "b.team_uuid='%s' and " \
+              "a.uuid=b.resource_uuid limit %d, %d" % (user_uuid,
+                                                       project_uuid,
+                                                       team_uuid,
+                                                       start_position,
+                                                       page_size)
         log.info('-----sql----: %s' % sql)
         return super(CinderDB, self).exec_select_sql(sql)
 
     def volume_list_project(self, team_uuid, project_uuid, page_size,
                             page_num):
         start_position = (page_num - 1) * page_size
-        sql = "select uuid as volume_uuid, user_uuid, name, description, " \
-              "size, status, type, conn_to, is_use_domain, is_start, " \
-              "is_secret, create_time from volume where is_show=1 and " \
-              "project_uuid='%s' and " \
-              "team_uuid='%s' limit %d, %d" % (project_uuid, team_uuid,
-                                               start_position, page_size)
+        sql = "select a.uuid as volume_uuid, a.name, a.description, " \
+              "a.size, a.status, a.type, a.conn_to, a.is_use_domain, " \
+              "a.is_start, a.is_secret, a.snapshot_uuid, " \
+              "a.source_volume_uuid, a.create_time from volume a, " \
+              "resources_acl b where a.is_show=1 and " \
+              "b.project_uuid='%s' and b.team_uuid='%s' and " \
+              "a.uuid=b.resource_uuid limit %d, %d" % (project_uuid,
+                                                       team_uuid,
+                                                       start_position,
+                                                       page_size)
 
         return super(CinderDB, self).exec_select_sql(sql)
 
     def volume_detail(self, volume_uuid):
-        sql = "select uuid as volume_uuid, user_uuid, name, description, " \
+        sql = "select uuid as volume_uuid, name, description, " \
               "size, status, type, conn_to, is_use_domain, is_start, " \
-              "is_secret, create_time from volume where " \
+              "is_secret, snapshot_uuid, source_volume_uuid, " \
+              "create_time from volume where " \
               "uuid='%s'" % volume_uuid
+
+        return super(CinderDB, self).exec_select_sql(sql)
+
+    def volume_if_can_delete(self, volume_uuid):
+        sql = "select count(uuid) as snapshot_uuid from snapshot where " \
+              "volume_uuid='%s'" % volume_uuid
 
         return super(CinderDB, self).exec_select_sql(sql)
 
@@ -266,3 +287,26 @@ class CinderDB(MysqlInit):
             super(CinderDB, self).exec_update_sql(sql)
 
         return
+
+    # 状态监控查询需求
+    def volume_status_monitor(self):
+        sql = "select uuid as volume_uuid, status from volume"
+
+        return super(CinderDB, self).exec_select_sql(sql)
+
+    def volume_status_update(self, volume_uuid, status):
+        sql = "update volume set status='%s' where uuid='%s'" % (status,
+                                                                 volume_uuid)
+
+        return super(CinderDB, self).exec_update_sql(sql)
+
+    # attachment
+    def attachment_create(self, attachment_uuid, server_uuid, volume_uuid,
+                          device):
+        sql = "insert into attachment(uuid, server_uuid, " \
+              "volume_uuid, device) values ('%s', '%s', " \
+              "'%s', '%s')" % (attachment_uuid,
+                               server_uuid,
+                               volume_uuid,
+                               device)
+        return super(CinderDB, self).exec_update_sql(sql)

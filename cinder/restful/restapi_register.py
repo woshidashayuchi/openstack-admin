@@ -30,4 +30,7 @@ def app_run():
     api.add_resource(restapi_define.SnapshotRouteApi,
                      '/api/v1.0/cinder/snapshots/<snapshot_uuid>')
 
+    api.add_resource(restapi_define.AttachmentApi,
+                     '/api/v1.0/cinder/attachments')
+
     app.run(host='0.0.0.0', port=9999, threaded=True, debug=True)

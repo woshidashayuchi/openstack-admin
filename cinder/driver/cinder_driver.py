@@ -10,8 +10,6 @@ from common import conf
 import requests
 from common.logs import logging as log
 from common.request_result import request_result
-# import json
-# from auth_driver import get_token
 from openstack_driver import OpenstackDriver
 
 

@@ -8,8 +8,7 @@ from sqlalchemy import String, Column, Integer, TIMESTAMP
 
 
 class DBInit(object):
-    def __init__(self):
-        pass
+
     db_config = {
         'host': conf.db_server01,
         'user': conf.db_user,
@@ -39,14 +38,19 @@ class DBInit(object):
                    Column('name', String(128)),
                    Column('description', String(256)),
                    Column('size', Integer),
-                   Column('status', Integer),
+                   Column('status', String(64)),
                    Column('type', String(32)),
                    Column('conn_to', String(64)),
+                   Column('snapshot_uuid', String(64)),
+                   Column('source_volume_uuid', String(64)),
                    Column('is_use_domain', String(64)),
                    Column('is_start', Integer),
                    Column('is_secret', Integer),
                    Column('create_time', TIMESTAMP(True),
-                          server_default=func.now(), nullable=False))
+                          server_default=func.now()),
+                   Column('update_time', TIMESTAMP(True),
+                          server_default=func.now(), nullable=False)
+                   )
 
     volume_type = Table('volume_type', metadata,
                         Column('uuid', String(64), primary_key=True),
@@ -69,7 +73,19 @@ class DBInit(object):
                      Column('is_forced', String(32)),
                      Column('is_show', Integer),
                      Column('create_time', TIMESTAMP(True),
+                            server_default=func.now()),
+                     Column('update_time', TIMESTAMP(True),
                             server_default=func.now(), nullable=False))
+
+    attachment = Table('attachment', metadata,
+                       Column('uuid', String(64), primary_key=True),
+                       Column('device', String(64)),
+                       Column('server_uuid', String(64)),
+                       Column('volume_uuid', String(64)),
+                       Column('create_time', TIMESTAMP(True),
+                              server_default=func.now()),
+                       Column('update_time', TIMESTAMP(True),
+                              server_default=func.now(), nullable=False))
 
     resources_acl = Table('resources_acl', metadata,
                           Column('resource_uuid', String(64),

@@ -10,17 +10,19 @@ from common.acl import acl_check, acl_check_uuids
 from common.parameters import parameter_check
 from volume_manager import VolumeManager, VolumeRouteManager
 from snapshot_manager import SnapshotManager, SnapshotRouteManager
+from attachment_manager import AttachmentManager
 
 
 class CinderManager(object):
     def __init__(self):
         self.v_manager = VolumeManager()
         self.snap_manager = SnapshotManager()
+        self.attach_manager = AttachmentManager()
 
     @acl_check('storage')
     def volume_create(self, context, name, size, description, v_type,
-                      conn_to=None, is_use_domain=None, is_start=0,
-                      is_secret=0):
+                      conn_to=None, snapshot_uuid=None, is_use_domain=None,
+                      is_start=0, is_secret=0, source_volume_uuid=None):
 
         try:
             token = context['token']
@@ -48,6 +50,8 @@ class CinderManager(object):
                                        description=description,
                                        v_type=v_type,
                                        conn_to=conn_to,
+                                       snapshot_uuid=snapshot_uuid,
+                                       source_volume_uuid=source_volume_uuid,
                                        is_use_domain=is_use_domain,
                                        is_secret=is_secret,
                                        user_uuid=user_uuid,
@@ -129,6 +133,11 @@ class CinderManager(object):
         return self.snap_manager.list(user_uuid, team_uuid, team_priv,
                                       project_uuid, project_priv, page_size,
                                       page_num)
+
+    def attachment_create(self, server_uuid, volume_uuid):
+        result = self.attach_manager.attachment_create(server_uuid=server_uuid,
+                                                       volume_uuid=volume_uuid)
+        return result
 
 
 class CinderRouteManager(object):

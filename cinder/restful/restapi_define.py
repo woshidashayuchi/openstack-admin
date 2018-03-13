@@ -44,20 +44,23 @@ class CinderApi(Resource):
         description = parameters.get('description')
         v_type = parameters.get('v_type')
         conn_to = parameters.get('conn_to')
+        snapshot_uuid = parameters.get('snapshot_uuid')
         is_use_domain = parameters.get('is_use_domain')
-        is_start = parameters.get('is_start')
-        is_secret = parameters.get('is_secret')
+        source_volume_uuid = parameters.get('source_volume_uuid')
+        # is_start = parameters.get('is_start')
+        # is_secret = parameters.get('is_secret')
         # user_uuid = parameters.get('user_uuid')
 
-        result = self.cinder.volume_create(context=context,
-                                           name=name,
-                                           size=size,
-                                           is_start=is_start,
-                                           description=description,
-                                           v_type=v_type,
-                                           conn_to=conn_to,
-                                           is_use_domain=is_use_domain,
-                                           is_secret=is_secret)
+        result = self.cinder.\
+            volume_create(context=context,
+                          name=name,
+                          size=size,
+                          description=description,
+                          v_type=v_type,
+                          conn_to=conn_to,
+                          snapshot_uuid=snapshot_uuid,
+                          is_use_domain=is_use_domain,
+                          source_volume_uuid=source_volume_uuid)
 
         return result
 
@@ -225,10 +228,12 @@ class TypeRouteApi(Resource):
         pass
 
 
+# snapshot
 class SnapshotApi(Resource):
     def __init__(self):
         self.snapshot = CinderManager()
 
+    # snapshot list
     def get(self):
         try:
             token = request.headers.get('token')
@@ -250,6 +255,7 @@ class SnapshotApi(Resource):
                                          page_size=page_size)
         return result
 
+    # create a new snapshot by a volume
     def post(self):
         try:
             token = request.headers.get('token')
@@ -293,7 +299,6 @@ class SnapshotRouteApi(Resource):
             token_auth(token)
         except Exception, e:
             log.error('Token check error, reason=%s' % e)
-
             return request_result(201)
         context = context_data(token, snapshot_uuid, "read")
         result = self.snapshot.snap_detail(context, snapshot_uuid)
@@ -330,3 +335,21 @@ class SnapshotRouteApi(Resource):
             return request_result(101)
         context = context_data(token, snapshot_uuid, "update", source_ip)
         return self.snapshot.snap_update(context, up_dict, snapshot_uuid)
+
+
+class AttachmentApi(Resource):
+
+    def __init__(self):
+        self.attach = CinderManager()
+
+    def post(self):
+        try:
+            param = json.loads(request.get_data())
+
+        except Exception, e:
+            log.error('parameters error, reason is: %s' % e)
+            return request_result(101)
+        server_uuid = param.get('server_uuid')
+        volume_uuid = param.get('volume_uuid')
+        return self.attach.attachment_create(server_uuid=server_uuid,
+                                             volume_uuid=volume_uuid)
