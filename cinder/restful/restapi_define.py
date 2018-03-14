@@ -342,6 +342,7 @@ class AttachmentApi(Resource):
     def __init__(self):
         self.attach = CinderManager()
 
+    # 挂载卷到云机
     def post(self):
         try:
             param = json.loads(request.get_data())
@@ -353,3 +354,19 @@ class AttachmentApi(Resource):
         volume_uuid = param.get('volume_uuid')
         return self.attach.attachment_create(server_uuid=server_uuid,
                                              volume_uuid=volume_uuid)
+
+
+class AttachmentRouteApi(Resource):
+    def __init__(self):
+        self.attach = CinderRouteManager()
+
+    # 分离卷（即将卷从云机卸载）
+    def delete(self, attachment_uuid):
+        try:
+            param = json.loads(request.get_data())
+        except Exception, e:
+            log.error('parameters error, reason is: %s' % e)
+            return request_result(101)
+        server_uuid = param.get('server_uuid')
+        return self.attach.attachment_delete(attachment_uuid=attachment_uuid,
+                                             server_uuid=server_uuid)

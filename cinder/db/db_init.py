@@ -32,9 +32,6 @@ class DBInit(object):
     metadata = MetaData(engine)
     volume = Table('volume', metadata,
                    Column('uuid', String(64), primary_key=True),
-                   Column('team_uuid', String(64)),
-                   Column('project_uuid', String(64)),
-                   Column('user_uuid', String(64)),
                    Column('name', String(128)),
                    Column('description', String(256)),
                    Column('size', Integer),

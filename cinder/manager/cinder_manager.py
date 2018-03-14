@@ -146,6 +146,7 @@ class CinderRouteManager(object):
         self.v_manager = VolumeRouteManager()
         self.cinder = CinderDriver()
         self.snap_manager = SnapshotRouteManager()
+        self.attach_manager = AttachmentManager()
 
     @acl_check('storage')
     def volume_delete(self, context, volume_uuid, logic=0):
@@ -181,3 +182,8 @@ class CinderRouteManager(object):
     def snap_detail(self, context,  snapshot_uuid):
         log.debug('get the snapshot detail, the context is: %s' % context)
         return self.snap_manager.detail(snapshot_uuid)
+
+    def attachment_delete(self, attachment_uuid, server_uuid):
+        return self.attach_manager.\
+            attachment_delete(attachment_uuid=attachment_uuid,
+                              server_uuid=server_uuid)

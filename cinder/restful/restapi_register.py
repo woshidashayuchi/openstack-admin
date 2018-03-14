@@ -33,4 +33,7 @@ def app_run():
     api.add_resource(restapi_define.AttachmentApi,
                      '/api/v1.0/cinder/attachments')
 
+    api.add_resource(restapi_define.AttachmentRouteApi,
+                     '/api/v1.0/cinder/attachments/<attachment_uuid>')
+
     app.run(host='0.0.0.0', port=9999, threaded=True, debug=True)

@@ -116,6 +116,21 @@ class OpenstackDriver(object):
         return request_result(200, {'device': op_result.device,
                                     'attachment_uuid': op_result.id})
 
+    # 卸载卷
+    def attachment_delete(self, attachment_uuid, server_uuid):
+        if self.conn is False:
+            return request_result(701)
+
+        try:
+            op_result = self.conn.compute.\
+                delete_volume_attachment(volume_attachment=attachment_uuid,
+                                         server=server_uuid)
+        except Exception, e:
+            log.error('delete the attachment(op) error, reason is: %s' % e)
+            return request_result(1012)
+        log.info('delete the attachment result(op) is: %s' % op_result)
+        return request_result(200, {"attachment_uuid": attachment_uuid})
+
 
 # test code
 if __name__ == '__main__':

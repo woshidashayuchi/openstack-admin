@@ -309,4 +309,16 @@ class CinderDB(MysqlInit):
                                server_uuid,
                                volume_uuid,
                                device)
-        return super(CinderDB, self).exec_update_sql(sql)
+
+        sql_volume_conn = "update volume set conn_to='%s' " \
+                          "where uuid='%s'" % (server_uuid,
+                                               volume_uuid)
+        return super(CinderDB, self).exec_update_sql(sql, sql_volume_conn)
+
+    def attachment_delete(self, attachment_uuid, conn_to):
+        sql_volume = "update volume set conn_to='%s' where " \
+                     "uuid=(select volume_uuid from attachment " \
+                     "where uuid='%s' )" % (conn_to, attachment_uuid)
+
+        sql = "delete from attachment where uuid='%s'" % attachment_uuid
+        return super(CinderDB, self).exec_update_sql(sql_volume, sql)
