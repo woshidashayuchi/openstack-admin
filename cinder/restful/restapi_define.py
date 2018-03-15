@@ -39,28 +39,9 @@ class CinderApi(Resource):
         # 在进行manager的相关调度与操作时候，提供权限判断，token提取等功能
         context = context_data(token, "vol_vol_pro_com", "create", source_ip)
 
-        name = parameters.get('name')
-        size = parameters.get('size')
-        description = parameters.get('description')
-        v_type = parameters.get('v_type')
-        conn_to = parameters.get('conn_to')
-        snapshot_uuid = parameters.get('snapshot_uuid')
-        is_use_domain = parameters.get('is_use_domain')
-        source_volume_uuid = parameters.get('source_volume_uuid')
-        # is_start = parameters.get('is_start')
-        # is_secret = parameters.get('is_secret')
-        # user_uuid = parameters.get('user_uuid')
-
         result = self.cinder.\
             volume_create(context=context,
-                          name=name,
-                          size=size,
-                          description=description,
-                          v_type=v_type,
-                          conn_to=conn_to,
-                          snapshot_uuid=snapshot_uuid,
-                          is_use_domain=is_use_domain,
-                          source_volume_uuid=source_volume_uuid)
+                          parameters=parameters)
 
         return result
 
@@ -80,8 +61,9 @@ class CinderApi(Resource):
             log.error('page_size or page_num error, reason is: %s' % e)
             return request_result(101)
 
+        parameters = {'page_size': page_size, 'page_num': page_num}
         context = context_data(token, "vol_vol_usr_com", "read")
-        result = self.cinder.volume_list(context, page_size, page_num)
+        result = self.cinder.volume_list(context, parameters)
 
         return result
 
@@ -154,8 +136,8 @@ class CinderRouteApi(Resource):
             return request_result(101)
 
         context = context_data(token, volume_uuid, "delete", source_ip)
-
-        result = self.cinder.volume_delete(context, volume_uuid, logic=logic)
+        parameters = {'volume_uuid': volume_uuid, 'logic': logic}
+        result = self.cinder.volume_delete(context, parameters)
         return result
 
     def get(self, volume_uuid):
@@ -249,10 +231,10 @@ class SnapshotApi(Resource):
             log.error('page_size or page_num error, reason is: %s' % e)
             return request_result(101)
 
+        parameters = {'page_size': page_size, 'page_num': page_num}
+
         context = context_data(token, "vol_snap_usr_com", "read")
-        result = self.snapshot.snap_list(context,
-                                         page_num=page_num,
-                                         page_size=page_size)
+        result = self.snapshot.snap_list(context, parameters)
         return result
 
     # create a new snapshot by a volume
@@ -269,22 +251,13 @@ class SnapshotApi(Resource):
             return request_result(201)
 
         try:
-            param = json.loads(request.get_data())
+            parameters = json.loads(request.get_data())
         except Exception, e:
             log.error('parameters error, reason is: %s' % e)
             return request_result(101)
 
-        name = param.get('name')
-        description = param.get('description')
-        metadata = param.get('metadata')
-        volume_uuid = param.get('volume_uuid')
-
         context = context_data(token, 'vol_snap_pro_com', 'create', source_ip)
-        result = self.snapshot.snap_create(context=context,
-                                           name=name,
-                                           description=description,
-                                           metadata=metadata,
-                                           volume_uuid=volume_uuid)
+        result = self.snapshot.snap_create(context, parameters)
         return result
 
 
@@ -314,8 +287,14 @@ class SnapshotRouteApi(Resource):
         except Exception, e:
             log.error('Token check error, reason=%s' % e)
             return request_result(201)
+        try:
+            logic = int(request.args.get('logic'))
+        except Exception, e:
+            log.error('get the logic parameters error, reason is: %s' % e)
+            return request_result(101)
+
         context = context_data(token, snapshot_uuid, "delete", source_ip)
-        result = self.snapshot.snap_delete(context, snapshot_uuid)
+        result = self.snapshot.snap_delete(context, snapshot_uuid, logic=logic)
         return result
 
     def put(self, snapshot_uuid):
@@ -345,14 +324,29 @@ class AttachmentApi(Resource):
     # 挂载卷到云机
     def post(self):
         try:
-            param = json.loads(request.get_data())
+            token = request.headers.get('token')
+            token_auth(token)
+            source_ip = request.headers.get('X-Real-IP')
+            if source_ip is None:
+                source_ip = request.remote_addr
+        except Exception, e:
+            log.error('Token check error, reason=%s' % e)
 
+            return request_result(201)
+
+        try:
+            param = json.loads(request.get_data())
         except Exception, e:
             log.error('parameters error, reason is: %s' % e)
             return request_result(101)
         server_uuid = param.get('server_uuid')
         volume_uuid = param.get('volume_uuid')
-        return self.attach.attachment_create(server_uuid=server_uuid,
+
+        context = context_data(token, 'vol_attach_pro_com',
+                               'create', source_ip)
+
+        return self.attach.attachment_create(context=context,
+                                             server_uuid=server_uuid,
                                              volume_uuid=volume_uuid)
 
 
@@ -363,10 +357,23 @@ class AttachmentRouteApi(Resource):
     # 分离卷（即将卷从云机卸载）
     def delete(self, attachment_uuid):
         try:
+            token = request.headers.get('token')
+            token_auth(token)
+            source_ip = request.headers.get('X-Real-IP')
+            if source_ip is None:
+                source_ip = request.remote_addr
+        except Exception, e:
+            log.error('Token check error, reason=%s' % e)
+
+            return request_result(201)
+
+        try:
             param = json.loads(request.get_data())
         except Exception, e:
             log.error('parameters error, reason is: %s' % e)
             return request_result(101)
         server_uuid = param.get('server_uuid')
-        return self.attach.attachment_delete(attachment_uuid=attachment_uuid,
+        context = context_data(token, attachment_uuid, "delete", source_ip)
+        return self.attach.attachment_delete(context=context,
+                                             attachment_uuid=attachment_uuid,
                                              server_uuid=server_uuid)

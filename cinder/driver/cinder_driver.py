@@ -28,9 +28,10 @@ class CinderDriver(object):
 
         if 'name' in up_dict.keys():
             parameters_dict['volume']['name'] = up_dict['name']
-        if 'description' in up_dict.keys():
+        elif 'description' in up_dict.keys():
             parameters_dict['volume']['description'] = up_dict['description']
-
+        else:
+            return request_result(200, 'should not update')
         headers = {"X-Auth-Token": token}
         try:
             result = requests.put(url=cinder_url,

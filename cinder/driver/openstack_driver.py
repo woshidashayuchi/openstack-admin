@@ -43,28 +43,45 @@ class OpenstackDriver(object):
         return request_result(200, result)
 
     def volume_create(self, name, size, v_type, description, snapshot_uuid,
-                      source_volume_uuid):
+                      source_volume_uuid, image_uuid):
+
         if self.conn is False:
             return request_result(701)
         try:
-            if snapshot_uuid is None and source_volume_uuid is None:
-                op_result = self.conn.block_storage.\
-                    create_volume(size=size,
-                                  name=name,
-                                  type=v_type,
-                                  description=description)
-            elif snapshot_uuid is not None:
+
+            if snapshot_uuid is not None:
                 op_result = self.conn.block_storage. \
                     create_volume(name=name,
                                   type=v_type,
                                   description=description,
                                   snapshot_id=snapshot_uuid)
-            else:
+                return op_result
+            if source_volume_uuid is not None:
                 op_result = self.conn.block_storage. \
                     create_volume(name=name,
                                   type=v_type,
                                   description=description,
                                   source_volume_id=source_volume_uuid)
+                return op_result
+
+            if image_uuid is not None:
+                log.info('++++++++++++++++++++++')
+                log.info('++++++++++++++++++++++')
+                log.info('++++++++++++++++++++++')
+                op_result = self.conn.block_storage.\
+                    create_volume(name=name,
+                                  type=v_type,
+                                  description=description,
+                                  image_id=image_uuid,
+                                  is_bootable=True)
+                return op_result
+
+            op_result = self.conn.block_storage.\
+                create_volume(size=size,
+                              name=name,
+                              type=v_type,
+                              description=description)
+
         except Exception, e:
             log.error('create the volume(op) error, reason is: %s' % e)
             return request_result(601)

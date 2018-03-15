@@ -7,6 +7,7 @@ from driver.cinder_driver import CinderDriver
 from common.logs import logging as log
 from common.request_result import request_result
 from common.skill import time_diff, use_time
+from common import conf
 from driver.openstack_driver import OpenstackDriver
 import time
 
@@ -61,7 +62,7 @@ class VolumeManager(object):
 
     def create(self, name, size, description, v_type, conn_to=None,
                snapshot_uuid=None, is_use_domain=None, is_start=0,
-               is_secret=0, source_volume_uuid=None,
+               is_secret=0, source_volume_uuid=None, image_uuid=None,
                user_uuid=None, project_uuid=None, team_uuid=None):
         '''
           Parameter
@@ -86,12 +87,15 @@ class VolumeManager(object):
                                                  description=description,
                                                  snapshot_uuid=snapshot_uuid,
                                                  source_volume_uuid=
-                                                 source_volume_uuid)
+                                                 source_volume_uuid,
+                                                 image_uuid=image_uuid)
 
         if op_result.get('status') != 200:
             return op_result
         if snapshot_uuid is not None:
             size = op_result.get('result').get('size')
+        if image_uuid is not None:
+            is_start = 1
         try:
             db_result = self.db.volume_create(name=name,
                                               size=size,
@@ -103,6 +107,7 @@ class VolumeManager(object):
                                               source_volume_uuid,
                                               is_start=is_start,
                                               is_use_domain=is_use_domain,
+                                              image_uuid=image_uuid,
                                               is_secret=is_secret,
                                               user_uuid=user_uuid,
                                               team_uuid=team_uuid,
@@ -160,7 +165,8 @@ class VolumeManager(object):
                 is_secret = volume[9]
                 snapshot_uuid = volume[10]
                 source_volume_uuid = volume[11]
-                create_time = time_diff(volume[12])
+                image_uuid = volume[12]
+                create_time = time_diff(volume[13])
                 result.append({'volume_uuid': volume_uuid,
                                'name': name,
                                'description': description,
@@ -170,6 +176,7 @@ class VolumeManager(object):
                                'conn_to': conn_to,
                                'snapshot_uuid': snapshot_uuid,
                                'source_volume_uuid': source_volume_uuid,
+                               'image_uuid': image_uuid,
                                'is_use_domain': is_use_domain,
                                'is_start': is_start,
                                'is_secret': is_secret,
@@ -190,6 +197,8 @@ class VolumeRouteManager(object):
         self.op_driver = OpenstackDriver()
         self.db = CinderDB()
         self.cinder = CinderDriver()
+        self.op_user = conf.op_user
+        self.op_pass = conf.op_pass
 
     # --force
     #     Attempt forced removal of volume(s), regardless of state(defaults to
@@ -206,7 +215,7 @@ class VolumeRouteManager(object):
             log.error('get the snapshot for the volume(%s) error, '
                       'reason is: %s' % (volume_uuid, e))
             return
-        log.debug('if can delete check , the db_result:%s' % db_result[0][0])
+        log.info('if can delete check , the db_result:%s' % db_result[0][0])
         if db_result[0][0] != 0:
             return False
         else:
@@ -269,13 +278,15 @@ class VolumeRouteManager(object):
                 result['is_secret'] = volume[9]
                 result['snapshot_uuid'] = volume[10]
                 result['source_volume_uuid'] = volume[11]
-                result['create_time'] = time_diff(volume[12])
+                result['image_uuid'] = volume[12]
+                result['create_time'] = time_diff(volume[13])
 
         return request_result(200, result)
 
     def update(self, up_dict, volume_uuid):
         # update volume(op)
-        op_token = self.op_driver.get_token('demo', 'qwe123')
+        op_token = self.op_driver.get_token(self.op_user,
+                                            self.op_pass)
         if op_token.get('status') != 200:
             return op_token
 

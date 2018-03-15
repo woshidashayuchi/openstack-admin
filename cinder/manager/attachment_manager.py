@@ -12,7 +12,8 @@ class AttachmentManager(object):
         self.op = OpenstackDriver()
         self.db = CinderDB()
 
-    def attachment_create(self, server_uuid, volume_uuid):
+    def attachment_create(self, server_uuid, volume_uuid, team_uuid,
+                          project_uuid, user_uuid):
         op_result = self.op.attachment_create(server_uuid=server_uuid,
                                               volume_uuid=volume_uuid)
         if op_result.get('status') != 200:
@@ -25,7 +26,10 @@ class AttachmentManager(object):
             self.db.attachment_create(attachment_uuid=attachment_uuid,
                                       volume_uuid=volume_uuid,
                                       server_uuid=server_uuid,
-                                      device=device)
+                                      device=device,
+                                      team_uuid=team_uuid,
+                                      project_uuid=project_uuid,
+                                      user_uuid=user_uuid)
         except Exception, e:
             log.error('create the attachment(db) error, reason is: %s' % e)
             return request_result(401)

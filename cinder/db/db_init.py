@@ -40,6 +40,7 @@ class DBInit(object):
                    Column('conn_to', String(64)),
                    Column('snapshot_uuid', String(64)),
                    Column('source_volume_uuid', String(64)),
+                   Column('image_uuid', String(64)),
                    Column('is_use_domain', String(64)),
                    Column('is_start', Integer),
                    Column('is_secret', Integer),
@@ -57,6 +58,8 @@ class DBInit(object):
                         Column('extra_specs', String(64)),
                         Column('is_public', Integer),
                         Column('create_time', TIMESTAMP(True),
+                               server_default=func.now()),
+                        Column('update_time', TIMESTAMP(True),
                                server_default=func.now(), nullable=False))
 
     snapshot = Table('snapshot', metadata,

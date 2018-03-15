@@ -162,6 +162,15 @@ class SnapshotRouteManager(object):
 
         return request_result(200, 'snapshot delete success')
 
+    def logic_delete(self, snapshot_uuid):
+        try:
+            db_result = self.db.snapshot_logic_delete(snapshot_uuid)
+        except Exception, e:
+            log.error('logic delete the snapshot(db) error, reason is: %s' % e)
+            return request_result(404)
+
+        return request_result(200, 'snapshot logic delete success')
+
     def update(self, up_dict, snapshot_uuid):
         op_token = self.op_driver.get_token('demo', 'qwe123')
         if op_token.get('status') != 200:
