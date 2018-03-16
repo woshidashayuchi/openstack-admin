@@ -13,6 +13,13 @@ class CinderRpcAPIs(object):
         self.cinder_manager = CinderManager()
         self.cinder_route_manager = CinderRouteManager()
 
+    def osdisk_create(self):
+        try:
+            pass
+        except Exception, e:
+            log.error('create the osdisk(mq) error, reason is: %s' % e)
+            return request_result(201)
+
     def clouddisk_create(self, context, parameters=None):
         log.info('create the vol base data is: context:%s, '
                  'parameters: %s' % (context, parameters))
@@ -23,7 +30,7 @@ class CinderRpcAPIs(object):
         except Exception, e:
             log.error('create the volume(mq) error, reason=%s' % e)
             return request_result(999)
-
+        log.info('create the volume(mq) result is: %s' % result)
         return result
 
     def clouddisk_delete(self, context, parameters):
@@ -45,7 +52,6 @@ class CinderRpcAPIs(object):
                 page_num = 1
             parameters['page_size'] = page_size
             parameters['page_num'] = page_num
-            log.info('+++++:%s' % parameters)
             result = self.cinder_manager.volume_list(context, parameters)
         except Exception, e:
             log.error('list the volumes(mq) error, reason is: %s' % e)
@@ -83,14 +89,24 @@ class CinderRpcAPIs(object):
 
     def disk_snapshot_revert(self, context, parameters):
         try:
-            pass
+            snapshot_uuid = parameters.get('snapshot_uuid')
+            up_dict = {'up_type': 'recovery'}
+            self.cinder_route_manager.snap_update(context,
+                                                  up_dict,
+                                                  snapshot_uuid)
         except Exception, e:
             log.error('revert snapshot(mq) error, reason is: %s' % e)
             return request_result(999)
 
     def disk_snapshot_revert_wait(self, context, parameters):
         try:
-            pass
+            snapshot_uuid = parameters.get('snapshot_uuid')
+            up_dict = {'up_type': 'recovery'}
+            result = self.cinder_route_manager.snap_update(context,
+                                                           up_dict,
+                                                           snapshot_uuid)
+
+            return result
         except Exception, e:
             log.error('revert snapshot(mq) wait error, reason is: %s' % e)
             return request_result(999)

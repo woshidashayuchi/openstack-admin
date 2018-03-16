@@ -19,14 +19,15 @@ class SnapshotManager(object):
 
     def create(self, name, description, metadata, volume_uuid, team_uuid,
                project_uuid, user_uuid):
-        '''
-        Parameters:
-        :param name:
+
+        """:param name:
         :param description:
         :param metadata: object
         :param volume_uuid:
-        :return:
-        '''
+        :param team_uuid:
+        :param project_uuid:
+        :param user_uuid:
+        :return:"""
         try:
             op_result = self.conn.block_storage.\
                 create_snapshot(name=name, description=description,
@@ -120,6 +121,7 @@ class SnapshotRouteManager(object):
         self.conn = connection()
         self.op_driver = OpenstackDriver()
         self.cinder = CinderDriver()
+        self.snapshot_manager = SnapshotManager()
 
     def detail(self, snapshot_uuid):
         result = dict()
@@ -160,33 +162,104 @@ class SnapshotRouteManager(object):
             return request_result(404)
         log.info('op_result is: %s, db_result is: %s' % (op_result, db_result))
 
-        return request_result(200, 'snapshot delete success')
+        return request_result(200, {'resource_uuid': snapshot_uuid})
 
     def logic_delete(self, snapshot_uuid):
+        # op delete
+        try:
+            op_result = self.conn.block_storage. \
+                delete_snapshot(snapshot_uuid)
+        except Exception, e:
+            log.error('delete the snapshot(op) error, reason is: %s' % e)
+            return request_result(1003)
+
         try:
             db_result = self.db.snapshot_logic_delete(snapshot_uuid)
         except Exception, e:
             log.error('logic delete the snapshot(db) error, reason is: %s' % e)
             return request_result(404)
+        log.info('logic delete the snapshot op_result is: %s, '
+                 'db_result is: %s' % (op_result, db_result))
+        return request_result(200, {'resource_uuid': snapshot_uuid})
 
-        return request_result(200, 'snapshot logic delete success')
+    def recovery_msg_ready(self, snapshot_uuid):
+        # 数据库查询信息
+        result = dict()
+        try:
+            snapshot_db_detail = self.db.\
+                snapshot_recovery_msg_get(snapshot_uuid)
+            if len(snapshot_db_detail) == 0:
+                log.error('have no message in database of '
+                          '%s' % snapshot_uuid)
+                return request_result(1001)
+            result['name'] = snapshot_db_detail[0][0]
+            result['description'] = snapshot_db_detail[0][1]
+            result['metadata'] = snapshot_db_detail[0][2]
+            result['size'] = snapshot_db_detail[0][3]
+            result['volume_uuid'] = snapshot_db_detail[0][4]
+            result['user_uuid'] = snapshot_db_detail[0][5]
+            result['project_uuid'] = snapshot_db_detail[0][6]
+            result['team_uuid'] = snapshot_db_detail[0][7]
+        except Exception, e:
+            log.error('get the message of snapshot(%s) '
+                      'from db error, reason is: %s' % snapshot_uuid)
+            raise Exception(e)
+        return result
 
     def update(self, up_dict, snapshot_uuid):
-        op_token = self.op_driver.get_token('demo', 'qwe123')
-        if op_token.get('status') != 200:
-            return op_token
 
-        token = op_token.get('result').get('token')
-        up_dict['snapshot_uuid'] = snapshot_uuid
-        result = self.cinder.update_snapshot(token, up_dict)
-        if result.get('status') != 200:
-            return result
+        if up_dict.get('up_type') == 'recovery':
+            # 获取信息
+            try:
+                param = self.recovery_msg_ready(snapshot_uuid)
+            except Exception, e:
+                log.error('get the message from db error, reason is: %s' % e)
+                return request_result(403)
 
-        # update db
-        try:
-            db_result = self.db.snapshot_update(up_dict, snapshot_uuid)
-        except Exception, e:
-            log.error('update the snapshot(db) error, reason is: %s' % e)
-            return request_result(402)
-        log.debug('update the snapshot(db) result is: %s' % db_result)
-        return request_result(200, {'resource_uuid': snapshot_uuid})
+            name = param.get('name')
+            description = param.get('description')
+            # metadata = param.get('metadata')
+            # if metadata == 'None':
+            #     metadata = None
+            volume_uuid = param.get('volume_uuid')
+            user_uuid = param.get('user_uuid')
+            project_uuid = param.get('project_uuid')
+            team_uuid = param.get('team_uuid')
+
+            # 恢复snapshot
+            op_result = self.snapshot_manager.create(name=name,
+                                                     description=description,
+                                                     volume_uuid=volume_uuid,
+                                                     metadata=None,
+                                                     team_uuid=team_uuid,
+                                                     project_uuid=project_uuid,
+                                                     user_uuid=user_uuid)
+            if op_result.get('status') != 200:
+                return request_result(1001)
+
+            # 删除原来的snapshot及权限信息
+            del_snap = self.delete(snapshot_uuid)
+            if del_snap.get('status') != 200:
+                return del_snap
+
+            return op_result
+
+        else:
+            op_token = self.op_driver.get_token('demo', 'qwe123')
+            if op_token.get('status') != 200:
+                return op_token
+
+            token = op_token.get('result').get('token')
+            up_dict['snapshot_uuid'] = snapshot_uuid
+            result = self.cinder.update_snapshot(token, up_dict)
+            if result.get('status') != 200:
+                return result
+
+            # update db
+            try:
+                db_result = self.db.snapshot_update(up_dict, snapshot_uuid)
+            except Exception, e:
+                log.error('update the snapshot(db) error, reason is: %s' % e)
+                return request_result(402)
+            log.debug('update the snapshot(db) result is: %s' % db_result)
+            return request_result(200, {'resource_uuid': snapshot_uuid})

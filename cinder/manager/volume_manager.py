@@ -64,31 +64,32 @@ class VolumeManager(object):
                snapshot_uuid=None, is_use_domain=None, is_start=0,
                is_secret=0, source_volume_uuid=None, image_uuid=None,
                user_uuid=None, project_uuid=None, team_uuid=None):
-        '''
-          Parameter
-          :param name: 存储卷名称
-          :param size: Volume size in GB
-          :param description: Volume description
-          :param v_type: Set the type of volume
+        """:param name: 存储卷名称
+        :param size: Volume size in GB
+        :param description: Volume description
+        :param v_type: Set the type of volume
                        Select < volume - type > from the available types as
                        shown by volume type list.
-          :param conn_to:
-          :param snapshot_uuid: 如果不为None,则通过卷快照创建卷
-          :param source_volume_uuid: 如果不为None,则通过已存在卷创建新卷，相当于copy
-          :param is_use_domain: availability-zone
-          :param is_start: Mark volume as bootable
-          :param is_secret: 加密
-          :return: volume_uuid
-        '''
+        :param conn_to:
+        :param snapshot_uuid: 如果不为None,则通过卷快照创建卷
+        :param source_volume_uuid: 如果不为None,则通过已存在卷创建新卷，相当于copy
+        :param is_use_domain: availability-zone
+        :param is_start: Mark volume as bootable
+        :param is_secret: 加密
+        :param image_uuid:
+        :param user_uuid
+        :param project_uuid
+        :param team_uuid
+        :return: volume_uuid """
         # 获取snapshot的相关信息
-        op_result = self.op_driver.volume_create(size=size,
-                                                 name=name,
-                                                 v_type=v_type,
-                                                 description=description,
-                                                 snapshot_uuid=snapshot_uuid,
-                                                 source_volume_uuid=
-                                                 source_volume_uuid,
-                                                 image_uuid=image_uuid)
+        op_result = self.op_driver.\
+            volume_create(size=size,
+                          name=name,
+                          v_type=v_type,
+                          description=description,
+                          snapshot_uuid=snapshot_uuid,
+                          source_volume_uuid=source_volume_uuid,
+                          image_uuid=image_uuid)
 
         if op_result.get('status') != 200:
             return op_result
@@ -97,23 +98,23 @@ class VolumeManager(object):
         if image_uuid is not None:
             is_start = 1
         try:
-            db_result = self.db.volume_create(name=name,
-                                              size=size,
-                                              description=description,
-                                              v_type=v_type,
-                                              conn_to=conn_to,
-                                              snapshot_uuid=snapshot_uuid,
-                                              source_volume_uuid=
-                                              source_volume_uuid,
-                                              is_start=is_start,
-                                              is_use_domain=is_use_domain,
-                                              image_uuid=image_uuid,
-                                              is_secret=is_secret,
-                                              user_uuid=user_uuid,
-                                              team_uuid=team_uuid,
-                                              project_uuid=project_uuid,
-                                              volume_uuid=op_result.
-                                              get('result').get('id'))
+            db_result = self.db.\
+                volume_create(name=name,
+                              size=size,
+                              description=description,
+                              v_type=v_type,
+                              conn_to=conn_to,
+                              snapshot_uuid=snapshot_uuid,
+                              source_volume_uuid=source_volume_uuid,
+                              is_start=is_start,
+                              is_use_domain=is_use_domain,
+                              image_uuid=image_uuid,
+                              is_secret=is_secret,
+                              user_uuid=user_uuid,
+                              team_uuid=team_uuid,
+                              project_uuid=project_uuid,
+                              volume_uuid=op_result.
+                              get('result').get('id'))
         except Exception, e:
             log.error('create the volume(db) error, reason is: %s' % e)
             return request_result(401)
@@ -121,7 +122,7 @@ class VolumeManager(object):
         log.info('op: %s, db: %s' % (op_result, db_result))
 
         return request_result(200, {'resource_uuid':
-                                        op_result.get('result').get('id')})
+                                    op_result.get('result').get('id')})
 
     def list(self, user_uuid, team_uuid, team_priv,
              project_uuid, project_priv, page_size, page_num):
@@ -184,6 +185,9 @@ class VolumeManager(object):
 
         return request_result(200, result)
 
+    def osdisk_create(self, parameters):
+        pass
+
     def logic_delete(self, volume_uuid):
         pass
 
@@ -224,6 +228,7 @@ class VolumeRouteManager(object):
     # 逻辑删除
     # 即：只是不再展现于页面
     def logic_delete(self, volume_uuid):
+
         # update the volume show status from database
         try:
             db_result = self.db.volume_logic_update(volume_uuid)
@@ -374,5 +379,5 @@ def volume_status_monitor():
             all_num += 1
             log.info('done update times: %d, '
                      'done all check times: %d' % (update_num,
-                                                      all_num))
+                                                   all_num))
             time.sleep(5)

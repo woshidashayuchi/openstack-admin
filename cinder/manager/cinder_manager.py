@@ -5,7 +5,7 @@ from driver.cinder_driver import CinderDriver
 from common.token_auth import token_auth
 from common.logs import logging as log
 from common.request_result import request_result
-from common.acl import acl_check, acl_check_uuids
+from common.acl import acl_check
 from common.parameters import parameter_check
 from volume_manager import VolumeManager, VolumeRouteManager
 from snapshot_manager import SnapshotManager, SnapshotRouteManager
@@ -29,12 +29,12 @@ class CinderManager(object):
             team_uuid = user_info.get('team_uuid')
             project_uuid = user_info.get('project_uuid')
 
-            log.info('the token is: %s, source_ip is: %s, user_uuid is: %s,'
-                      'team_uuid is: %s, project_uuid is: %s' % (token,
-                                                                 source_ip,
-                                                                 user_uuid,
-                                                                 team_uuid,
-                                                                 project_uuid))
+            log.info('the token is: %s, source_ip is: %s, user_uuid is: %s,' 
+                     'team_uuid is: %s, project_uuid is: %s' % (token,
+                                                                source_ip,
+                                                                user_uuid,
+                                                                team_uuid,
+                                                                project_uuid))
             name = parameters.get('name')
             size = parameters.get('size')
             description = parameters.get('description')

@@ -66,8 +66,6 @@ class OpenstackDriver(object):
 
             if image_uuid is not None:
                 log.info('++++++++++++++++++++++')
-                log.info('++++++++++++++++++++++')
-                log.info('++++++++++++++++++++++')
                 op_result = self.conn.block_storage.\
                     create_volume(name=name,
                                   type=v_type,

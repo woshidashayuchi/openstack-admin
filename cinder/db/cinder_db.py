@@ -299,6 +299,15 @@ class CinderDB(MysqlInit):
 
         return super(CinderDB, self).exec_select_sql(sql)
 
+    def snapshot_recovery_msg_get(self, snapshot_uuid):
+        sql = "select a.name, a.description, " \
+              "a.metadata, a.size, a.volume_uuid, " \
+              "b.user_uuid,b.project_uuid,b.team_uuid from " \
+              "snapshot a, resources_acl b where a.uuid='%s' " \
+              "and a.uuid=b.resource_uuid" % snapshot_uuid
+
+        return super(CinderDB, self).exec_select_sql(sql)
+
     def snapshot_delete(self, snapshot_uuid):
         sql = "delete from snapshot where uuid='%s'" % snapshot_uuid
         # sql = "update snapshot set is_show=0 where uuid='%s'" % snapshot_uuid

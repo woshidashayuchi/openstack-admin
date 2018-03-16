@@ -47,7 +47,7 @@ class CinderDriver(object):
             log.error('update the volume result(op) is: %s' % result.text)
             return request_result(602)
 
-        return request_result(200, 'update success')
+        return request_result(200, {'resource_uuid': up_dict['volume_uuid']})
 
     def update_snapshot(self, token, up_dict):
         cinder_url = conf.cinder_url + \
