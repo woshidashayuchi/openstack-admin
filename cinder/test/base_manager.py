@@ -3,6 +3,8 @@
 # Time: 2018/2/23 17:13
 from __future__ import unicode_literals
 import sys
+reload(sys)
+sys.setdefaultencoding('utf-8')
 path1 = sys.path[0] + '/..'
 path2 = sys.path[0] + '/../..'
 sys.path.append(path1)
@@ -14,11 +16,9 @@ from db.cinder_db import CinderDB
 from common.conf import token_url
 from common.logs import logging as log
 from common.request_result import request_result
-
 import openstack
-'''
-    curl -i 'http://127.0.0.1:5000/v2.0/tokens' -X POST -H "Content-Type: application/json" -H "Accept: application/json"  -d '{"auth": {"tenantName": "demo", "passwordCredentials": {"username": "demo", "password": "qwe123"}}}'
-'''
+
+
 class BaseManager(object):
 
     def __init__(self):
@@ -128,4 +128,5 @@ if __name__ == '__main__':
     # print ret.next()
     # print conn.block_storage.get_volume('4faed492-5285-4c97-a6c4-1d19dd42f635')
 
-    print conn.compute.create_volume_attachment.__doc__
+    # print conn.compute.create_volume_attachment.__doc__
+    print dir(conn.network)

@@ -311,6 +311,7 @@ class VolumeRouteManager(object):
         return request_result(200, {'resource_uuid': volume_uuid})
 
 
+# 清除过期存储卷
 def volume_expire_delete():
     db = CinderDB()
     num = 0
@@ -337,6 +338,7 @@ def volume_expire_delete():
         time.sleep(120)
 
 
+# 动态更新存储卷状态与op环境一致
 def volume_status_monitor():
     db = CinderDB()
     op = OpenstackDriver()
