@@ -51,7 +51,11 @@ class NetworkOperateManager(object):
                                   user_uuid=user_uuid)
         except Exception, e:
             log.error('create the network(db) error, reason is: %s' % e)
+            # rollback
+            rollback_result = self.op_driver.network_delete(network_uuid)
+            log.info('rollback result(op) is: %s' % rollback_result)
             return request_result(401)
+
         log.info('create the network result is: %s, '
                  'db result is: %s' % (op_result, db_result))
 
@@ -171,4 +175,76 @@ class NetworkOperateManager(object):
 
 class NetworkOperateRouteManager(object):
     def __init__(self):
-        pass
+        self.op_driver = OpenstackDriver()
+        self.db = NetworkDB()
+
+    def network_detail(self, network_uuid):
+        result = dict()
+        try:
+            db_result = self.db.db_network_detail(network_uuid)
+        except Exception, e:
+            log.error('get the network detail from db error, '
+                      'reason is: %s' % e)
+            return request_result(403)
+        if len(db_result) != 0:
+            for network in db_result:
+                result['name'] = network[0]
+                result['subnet_name_and_cidr'] = network[1] + ' ' + network[2]
+                result['description'] = network[3]
+                result['is_shared'] = network[4]
+                result['is_router_external'] = network[5]
+                result['size'] = network[6]
+                result['status'] = network[7]
+                result['is_admin_state_up'] = network[8]
+                result['create_time'] = time_diff(network[9])
+
+        return request_result(200, result)
+
+    def network_delete(self, network_uuid, logic):
+        if logic == 1:
+            try:
+                db_result = self.db.db_network_logic_delete(network_uuid)
+            except Exception, e:
+                log.error('logic delete the network(db) error, '
+                          'reason is: %s' % e)
+                return request_result(404)
+            if db_result is not None:
+                return request_result(404)
+        else:
+            # 删除openstack环境网络
+            op_result = self.op_driver.network_delete(network_uuid)
+            if op_result.get('status') != 200:
+                return op_result
+            # 删除数据库
+            try:
+                db_result = self.db.db_network_delete(network_uuid)
+            except Exception, e:
+                log.error('delete the network(db) error, reason is: %s' % e)
+
+                return request_result(404)
+
+            if db_result is not None:
+                return request_result(404)
+
+        return request_result(200, {'resource_uuid': network_uuid})
+
+    def network_update(self, up_dict):
+        try:
+            op_result = self.op_driver.network_update(up_dict)
+        except Exception, e:
+            log.error('update the network(op) error, reason is: %s' % e)
+            return request_result(1021)
+        if op_result.get('status') != 200:
+            return op_result
+
+        # update db
+        try:
+            db_result = self.db.db_network_update(up_dict)
+        except Exception, e:
+            log.error('update the network(db) error, reason is: %s' % e)
+            return request_result(402)
+
+        log.info('update the network op_result is: %s, '
+                 'db_result is: %s' % (op_result, db_result))
+
+        return request_result(200, {'resource_uuid': up_dict['network_uuid']})

@@ -5,7 +5,6 @@ import sys
 import re
 from common.logs import logging as log
 
-
 def rpc_data(api, context, parameters=None):
 
     return {'api': api,
@@ -28,17 +27,14 @@ def parameter_check(parameter, ptype='pstr', exist='yes'):
 
     if (parameter is None) and (exist == 'no'):
         return parameter
-    if (parameter is None) and (exist == 'yes'):
+    elif (parameter is None) and (exist == 'yes'):
         raise(Exception('Parameter is not allow to be None'))
-    if exist == 'not_essential':
-        if parameter is None:
-            return parameter
-        else:
-            pass
+
     para_format = {
         "pstr": "[A-Za-z0-9-_]{1,60}$",
-        "pnam": "[A-Za-z]{1}[A-Za-z0-9-_]{4,19}$",  # name
-        "psiz": "[1-9]\d*",  # size
+        "pnam": "[A-Za-z]{1}[A-Za-z0-9-_]{4,19}$", # name
+        "psiz": "[1-9]\d*", # size
+
 
         "psnm": "[A-Za-z]{1}[A-Za-z0-9-_]{2,19}$",
         "pint": "-{0,1}[0-9]{1,24}$",
@@ -54,15 +50,7 @@ def parameter_check(parameter, ptype='pstr', exist='yes'):
         "pdsk": "/dev/[s|v]{1}d[a-z]{1}[0-9]{1,2}$",
         "pmac": ("[A-Fa-f0-9]{2}:[A-Fa-f0-9]{2}:[A-Fa-f0-9]{2}:"
                  "[A-Fa-f0-9]{2}:[A-Fa-f0-9]{2}:[A-Fa-f0-9]{2}$"),
-        "ppwd": ".{6,60}",
-
-        "nname": "[A-Za-z]{1}[A-Za-z0-9-_]{3,19}$",
-        "ndes": ".*{64}",
-        "n01": "^[01]$",
-        "n04": "^[46]$",
-        "nnum": "^\+?[1-9][0-9]*$",
-        "nip": "((25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d)))\.){3}(25[0-5]"
-               "|2[0-4]\d|((1\d{2})|([1-9]?\d)))"
+        "ppwd": ".{6,60}"
 
     }
 
@@ -73,20 +61,6 @@ def parameter_check(parameter, ptype='pstr', exist='yes'):
         raise(Exception('Parameter format error'))
 
     return parameter
-
-
-def allocation_pools_conform(allocation_pools):
-    """
-    :param allocation_pools: "172.20.2.1,172.20.20.x;172.20..."
-    :return:
-    """
-    result = []
-    if allocation_pools is not None and allocation_pools != "":
-        for allocation in [pool for pool in allocation_pools.split(';')]:
-            result.append({'start': allocation.split(',')[0],
-                           'end': allocation.split(',')[1]})
-
-    return result
 
 
 if __name__ == "__main__":

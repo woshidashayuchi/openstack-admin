@@ -7,7 +7,7 @@ from common.token_auth import token_auth
 from common.logs import logging as log
 from common.request_result import request_result
 from common.parameters import context_data
-from manager.network_manager import NetworkManager
+from manager.network_manager import NetworkManager, NetworkRouteManager
 
 
 class NetworkApi(Resource):
@@ -50,16 +50,57 @@ class NetworkApi(Resource):
 
 class NetworkRouteApi(Resource):
     def __init__(self):
-        pass
+        self.network = NetworkRouteManager()
 
-    def get(self):
-        pass
+    def get(self, network_uuid):
+        # detail
+        try:
+            token = request.headers.get('token')
+            token_auth(token)
+        except Exception, e:
+            log.error('Token check error, reason=%s' % e)
+            return request_result(201)
+        context = context_data(token, network_uuid, "read")
+        return self.network.network_detail_manager(context, network_uuid)
 
-    def update(self):
-        pass
+    def put(self, network_uuid):
+        try:
+            token = request.headers.get('token')
+            token_auth(token)
+            source_ip = request.headers.get('X-Real-IP')
+            if source_ip is None:
+                source_ip = request.remote_addr
+        except Exception, e:
+            log.error('Token check error, reason=%s' % e)
+            return request_result(201)
 
-    def delete(self):
-        pass
+        parameters = request.get_data()
+        context = context_data(token, network_uuid, "update", source_ip)
+        return self.network.network_update_manager(context,
+                                                   network_uuid,
+                                                   parameters)
+
+    def delete(self, network_uuid):
+        try:
+            token = request.headers.get('token')
+            token_auth(token)
+            source_ip = request.headers.get('X-Real-IP')
+            if source_ip is None:
+                source_ip = request.remote_addr
+        except Exception, e:
+            log.error('Token check error, reason=%s' % e)
+            return request_result(201)
+        try:
+            logic = int(request.args.get('logic'))
+            if logic != 1 and logic != 0:
+                raise Exception('parameters(logic) error')
+        except Exception, e:
+            log.error('get the logic value error, reason is: %s' % e)
+            return request_result(101)
+
+        context = context_data(token, network_uuid, "delete", source_ip)
+        return self.network.network_delete_manager(context, network_uuid,
+                                                   logic)
 
 
 class SubNetApi(Resource):

@@ -57,15 +57,15 @@ class DBInit(object):
                     Column('size', Integer),
                     Column('status', String(64)),
                     Column('is_admin_state_up', Integer),
-                    Column('yuliu1', String(64), server_default=None),
+                    Column('is_show', Integer, server_default=text('1')),
                     Column('yuliu2', String(64), server_default=None),
                     Column('yuliu3', String(64), server_default=None),
                     Column('create_time', TIMESTAMP(True),
                            server_default=func.now(), nullable=False),
-                    Column('update_time', TIMESTAMP(True), nullable=False,
-                           server_default=text('CURRENT_TIMESTAMP '
-                                               'ON UPDATE CURRENT_TIMESTAMP')
-                           )
+                    # Column('update_time', TIMESTAMP(True), nullable=False,
+                    #        server_default=text('CURRENT_TIMESTAMP '
+                    #                            'ON UPDATE CURRENT_TIMESTAMP')
+                    #        )
                     )
 
     subnet = Table('subnet', metadata,

@@ -1,0 +1,27 @@
+接口相关：
+subnet创建参数示例：
+    {"name":"for_test444","description":"happy test subnet",
+    "is_dhcp_enabled":1,"network_uuid":"d4ca9465-62bc-4d4d-9296-c93c821aa7bf",
+    "ip_version":4,"gateway_ip":"172.20.2.2","cidr":"172.20.2.0/24"}
+network创建参数示例：
+    {"name":"testaaa","description": "description","is_admin_state_up":1,
+    "is_shared":0}
+
+
+代码相关：
+查询network列表sql：
+select a.name, b.name as subnet_name, b.cidr, a.description, a.is_shared,
+a.is_router_external, a.size, a.status, a.is_admin_state_up, a.create_time
+from network a, subnet b, resources_acl c where a.is_show=1 and
+a.uuid=b.network_uuid and a.uuid=c.resource_uuid and
+c.project_uuid='13f89779-0656-4808-b726-2b18afa5b268' and
+c.team_uuid='b46179e2-eb30-49bf-bee4-e97e67631465'
+union
+select a.name, '' as subnet_name, '' as cidr, a.description, a.is_shared,
+a.is_router_external, a.size, a.status, a.is_admin_state_up,
+a.create_time from network a, subnet b, resources_acl c where a.is_show=1
+and a.uuid=c.resource_uuid and
+c.project_uuid='13f89779-0656-4808-b726-2b18afa5b268'
+and c.team_uuid='b46179e2-eb30-49bf-bee4-e97e67631465'
+order by create_time desc limit 0, 1;
+

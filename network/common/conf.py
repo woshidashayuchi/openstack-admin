@@ -14,13 +14,11 @@ db_user = 'cinder'
 db_passwd = 'qwe123'
 database = 'network'
 
-cinder_url = "http://172.20.2.12:8776/v3/c5aea850b5f344e5828c103fc9a02b1a/"
-
 storage_db_user = 'cinder'
 storage_db_passwd = 'qwe123'
 storage_database = 'storage'
 
-
+net_url = "http://172.20.2.12:9696/v2.0/networks/"
 # ucenter_api = "https://center.tjiyun.com"
 ucenter_api = "http://172.16.32.197:8101"
 

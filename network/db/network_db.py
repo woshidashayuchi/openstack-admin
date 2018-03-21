@@ -61,14 +61,25 @@ class NetworkDB(MysqlInit):
         sql = "select a.name, b.name as subnet_name, b.cidr, a.description, " \
               "a.is_shared, a.is_router_external, a.size, a.status, " \
               "a.is_admin_state_up, a.create_time from network a, subnet b, " \
-              "resources_acl c where a.uuid=b.network_uuid and " \
-              "a.uuid=c.resource_uuid and c.user_uuid='%s' " \
+              "resources_acl c where a.is_show=1 and a.uuid=b.network_uuid " \
+              "and a.uuid=c.resource_uuid and c.user_uuid='%s' " \
+              "and c.project_uuid='%s' and c.team_uuid='%s' " \
+              "UNION " \
+              "select a.name, '' as subnet_name, '' as cidr, a.description, " \
+              "a.is_shared, a.is_router_external, a.size, a.status, " \
+              "a.is_admin_state_up, a.create_time from network a, subnet b, " \
+              "resources_acl c where a.is_show=1 " \
+              "and a.uuid=c.resource_uuid and c.user_uuid='%s' " \
               "and c.project_uuid='%s' and c.team_uuid='%s' " \
               "order by create_time DESC limit %d, %d" % (user_uuid,
                                                           project_uuid,
                                                           team_uuid,
+                                                          user_uuid,
+                                                          project_uuid,
+                                                          team_uuid,
                                                           start_position,
                                                           page_size)
+        log.debug('user network list sql is: %s' % sql)
         return super(NetworkDB, self).exec_select_sql(sql)
 
     def db_network_list_project(self, team_uuid, project_uuid,
@@ -77,15 +88,69 @@ class NetworkDB(MysqlInit):
         sql = "select a.name, b.name as subnet_name, b.cidr, a.description, " \
               "a.is_shared, a.is_router_external, a.size, a.status, " \
               "a.is_admin_state_up, a.create_time from network a, subnet b, " \
-              "resources_acl c where a.uuid=b.network_uuid and " \
-              "a.uuid=c.resource_uuid " \
+              "resources_acl c where a.is_show=1 and a.uuid=b.network_uuid " \
+              "and a.uuid=c.resource_uuid " \
+              "and c.project_uuid='%s' and c.team_uuid='%s' " \
+              "UNION " \
+              "select a.name, '' as subnet_name, '' as cidr, a.description, " \
+              "a.is_shared, a.is_router_external, a.size, a.status, " \
+              "a.is_admin_state_up, a.create_time from network a, subnet b, " \
+              "resources_acl c where a.is_show=1  " \
+              "and a.uuid=c.resource_uuid " \
               "and c.project_uuid='%s' and c.team_uuid='%s' " \
               "order by create_time DESC limit %d, %d" % (project_uuid,
+                                                          team_uuid,
+                                                          project_uuid,
                                                           team_uuid,
                                                           start_position,
                                                           page_size)
 
+        log.debug('project network list sql is: %s' % sql)
         return super(NetworkDB, self).exec_select_sql(sql)
+
+    def db_network_detail(self, network_uuid):
+        sql = "select a.name, b.name as subnet_name, b.cidr, a.description, " \
+              "a.is_shared, a.is_router_external, a.size, a.status, " \
+              "a.is_admin_state_up, a.create_time from network a, subnet b " \
+              "where a.uuid=b.network_uuid and a.uuid='%s'" % network_uuid
+
+        return super(NetworkDB, self).exec_select_sql(sql)
+
+    def db_network_logic_delete(self, network_uuid):
+        sql = "update network set is_show=0 where " \
+              "uuid='%s'" % network_uuid
+
+        return super(NetworkDB, self).exec_update_sql(sql)
+
+    def db_network_delete(self, network_uuid):
+        # 删除网络
+        sql_network = "delete from network where " \
+                      "uuid='%s'" % network_uuid
+
+        # 删除该网络指向的子网
+        sql_subnet = "delete from subnet where " \
+                     "network_uuid='%s'" % network_uuid
+
+        # 删除acl权限表中与该网络资源相关的记录
+        sql_acl = "delete from resources_acl where " \
+                  "resource_uuid='%s'" % network_uuid
+
+        return super(NetworkDB, self).exec_update_sql(sql_network,
+                                                      sql_subnet,
+                                                      sql_acl)
+
+    def db_network_update(self, up_dict):
+        network_uuid = up_dict.get('network_uuid')
+        up_nets = up_dict.keys()
+        for column in up_nets:
+            if column == 'network_uuid':
+                continue
+            sql = "update network set %s='%s' " \
+                  "where uuid='%s'" % (column, up_dict[column], network_uuid)
+
+            super(NetworkDB, self).exec_update_sql(sql)
+
+        return
 
     def db_subnet_create(self, name, description, is_dhcp_enabled,
                          network_uuid, ip_version, gateway_ip,
