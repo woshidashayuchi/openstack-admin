@@ -2,7 +2,7 @@
 # Author: wxf<wangxiaofeng1@hualala.com>
 # Time: 2018/2/23 17:03
 
-import conf
+from common import conf
 import logging
 
 logging.basicConfig(

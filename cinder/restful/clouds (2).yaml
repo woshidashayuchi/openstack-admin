@@ -1,0 +1,30 @@
+clouds:
+  demo:
+    region_name: RegionOne
+    auth:
+      auth_url: http://172.16.0.46:5000/v2.0/
+      username: wangxiaofeng
+      password: wangxiaofeng
+      project_name: cloud
+    example:
+      image_name: fedora-20.x86_64
+      flavor_name: m1.small
+      network_name: private
+  admin:
+    region_name: RegionOne
+    auth:
+      auth_url: http://172.20.2.12:5000/v2.0/
+      username: admin
+      password: qwe123
+      project_name: admin
+    example:
+      image_name: fedora-20.x86_64
+      flavor_name: m1.small
+      network_name: private
+  rackspace:
+    cloud: rackspace
+    auth:
+      username: joe
+      password: joes-password
+      project_name: 123123
+    region_name: IAD

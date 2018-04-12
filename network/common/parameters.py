@@ -1,10 +1,10 @@
 # -*- coding: utf-8 -*-
 # Author: YanHua <yunshu360@163.com>
-
+from __future__ import unicode_literals
 import sys
 import re
 from common.logs import logging as log
-
+from netaddr import *
 
 def rpc_data(api, context, parameters=None):
 
@@ -30,11 +30,15 @@ def parameter_check(parameter, ptype='pstr', exist='yes'):
         return parameter
     if (parameter is None) and (exist == 'yes'):
         raise(Exception('Parameter is not allow to be None'))
+    if ptype == 'ncid':
+        IPNetwork(parameter)
+        return parameter
     if exist == 'not_essential':
         if parameter is None:
             return parameter
         else:
-            pass
+            if ptype == 'ndes':
+                return parameter
     para_format = {
         "pstr": "[A-Za-z0-9-_]{1,60}$",
         "pnam": "[A-Za-z]{1}[A-Za-z0-9-_]{4,19}$",  # name
@@ -57,13 +61,11 @@ def parameter_check(parameter, ptype='pstr', exist='yes'):
         "ppwd": ".{6,60}",
 
         "nname": "[A-Za-z]{1}[A-Za-z0-9-_]{3,19}$",
-        "ndes": ".*{64}",
         "n01": "^[01]$",
         "n04": "^[46]$",
         "nnum": "^\+?[1-9][0-9]*$",
         "nip": "((25[0-5]|2[0-4]\d|((1\d{2})|([1-9]?\d)))\.){3}(25[0-5]"
-               "|2[0-4]\d|((1\d{2})|([1-9]?\d)))"
-
+               "|2[0-4]\d|((1\d{2})|([1-9]?\d)))",
     }
 
     m = re.match(para_format[ptype], str(parameter))

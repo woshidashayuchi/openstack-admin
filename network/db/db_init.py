@@ -62,10 +62,10 @@ class DBInit(object):
                     Column('yuliu3', String(64), server_default=None),
                     Column('create_time', TIMESTAMP(True),
                            server_default=func.now(), nullable=False),
-                    # Column('update_time', TIMESTAMP(True), nullable=False,
-                    #        server_default=text('CURRENT_TIMESTAMP '
-                    #                            'ON UPDATE CURRENT_TIMESTAMP')
-                    #        )
+                    Column('update_time', TIMESTAMP(True), nullable=False,
+                           server_default=text('CURRENT_TIMESTAMP '
+                                               'ON UPDATE CURRENT_TIMESTAMP')
+                           )
                     )
 
     subnet = Table('subnet', metadata,
@@ -80,6 +80,7 @@ class DBInit(object):
                    Column('cidr', String(32)),
                    Column('dns_nameservers', String(32), server_default=None),
                    Column('host_routes', String(64), server_default=None),
+                   Column('router_interface', String(64)),
                    Column('create_time', TIMESTAMP(True),
                           server_default=func.now(), nullable=False),
                    Column('update_time', TIMESTAMP(True), nullable=False,
@@ -87,6 +88,60 @@ class DBInit(object):
                                               'ON UPDATE CURRENT_TIMESTAMP'))
                    )
 
+    route = Table('router', metadata,
+                  Column('uuid', String(64), primary_key=True),
+                  Column('name', String(64)),
+                  Column('description', String(128)),
+                  Column('external_gateway_info', String(64)),
+                  Column('is_admin_state_up', Integer,
+                         server_default=text('0')),
+                  Column('status', String(64)),
+                  Column('is_show', Integer, server_default=text('0')),
+                  Column('create_time', TIMESTAMP(True),
+                         server_default=func.now(), nullable=False),
+
+                  Column('update_time', TIMESTAMP(True), nullable=False,
+                         server_default=text('CURRENT_TIMESTAMP '
+                                             'ON UPDATE CURRENT_TIMESTAMP'))
+
+                  )
+
+    port = Table('port', metadata,
+                 Column('uuid', String(64), primary_key=True),
+                 Column('vm_uuid', String(64)),
+                 Column('name', String(64)),
+                 Column('description', String(128)),
+                 Column('ip_address', String(64)),
+                 Column('network_uuid', String(64)),
+                 Column('mac_address', String(64)),
+                 Column('status', String(64)),
+                 Column('create_time', TIMESTAMP(True),
+                        server_default=func.now(), nullable=False),
+
+                 Column('update_time', TIMESTAMP(True), nullable=False,
+                        server_default=text('CURRENT_TIMESTAMP '
+                                            'ON UPDATE CURRENT_TIMESTAMP')
+                        ))
+
+    floating_ip = Table('floating_ip', metadata,
+                        Column('uuid', String(64), primary_key=True),
+                        Column('name', String(64)),
+                        Column('description', String(128)),
+                        Column('router_uuid', String(64)),
+                        Column('fixed_ip_address', String(64)),
+                        Column('floating_ip_address', String(64)),
+                        Column('revision_number', Integer),
+                        Column('port_id', String(64)),
+                        Column('vm_uuid', String(64)),
+                        Column('status', String(64)),
+                        Column('is_show', Integer),
+                        Column('create_time', TIMESTAMP(True),
+                               server_default=func.now(), nullable=False),
+                        Column('update_time', TIMESTAMP(True), nullable=False,
+                               server_default=text('CURRENT_TIMESTAMP '
+                                                   'ON UPDATE '
+                                                   'CURRENT_TIMESTAMP'))
+                        )
     metadata.create_all(engine)
 
     # 初始化数据(acl 表数据)

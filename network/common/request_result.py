@@ -3,8 +3,8 @@
 # Time: 2018/2/23 17:18
 
 status_code = {
+    0: 'ok',
     101: 'parameters error',
-    200: 'ok',
     201: 'Authentication failure',
     202: 'Operation denied',
     203: 'openstack Authentication failure',
@@ -14,6 +14,7 @@ status_code = {
     402: 'mysql database update error',
     403: 'mysql database select error',
     404: 'mysql database delete error',
+    405: 'delete forbid',
     501: 'get token error',
     598: 'rabbitmq exec error',
     601: 'volume create error',
@@ -48,10 +49,33 @@ status_code = {
     1021: 'network update error',
     1022: 'network delete error',
     1023: 'network select error',
+    1024: 'network unable use',
+    1025: 'network add to vm error',
+    1026: 'network remove from vm error',
     1030: 'subnet create error',
     1031: 'subnet update error',
     1032: 'subnet delete error',
-    1033: 'subnet select error'
+    1033: 'subnet select error',
+    1041: 'router create error',
+    1042: 'router update error',
+    1043: 'router delete error',
+    1044: 'router select error',
+    1051: 'floating ip create error',
+    1052: 'floating ip update error',
+    1053: 'floating ip delete error',
+    1054: 'floating ip select error',
+    1055: 'floating ip find error',
+    1056: 'floating ip bind error',
+    1057: 'floating ip unbind error',
+    1058: 'floating ip using',
+    1059: 'floating ip unable to use',
+    1061: 'port create error',
+    1062: 'port delete error',
+    1063: 'port update error',
+    1064: 'port select error',
+    1065: 'port has be used',
+    1081: 'add interface to vm error',
+    1082: 'remove interface from vm error'
 }
 
 

@@ -141,8 +141,7 @@ def acl_check(service_name=None):
 
     return _aclcheck
 
-
-def acl_check_uuids(service_name=None):
+def acl_no_check(service_name=None):
 
     def _aclcheck(func):
 
@@ -152,7 +151,7 @@ def acl_check_uuids(service_name=None):
             context = func_args.get('context')
 
             token = context['token']
-            resources_uuid = context['resource_uuid']
+            resource_uuid = context['resource_uuid']
             action = context['action']
 
             user_info = token_auth(token)['result']
@@ -164,43 +163,42 @@ def acl_check_uuids(service_name=None):
 
             context = "%s%s%s%s%s%s%s" % (user_uuid, team_uuid, team_priv,
                                           project_uuid, project_priv,
-                                          resources_uuid, action)
+                                          resource_uuid, action)
 
             log.debug('start ack check, context=%s' % (context))
             acl_info = caches.get(context)
-            for resource_uuid in resources_uuid:
-                if (acl_info is LocalCache.notFound):
-                    log.debug('Cache acl not hit, context=%s' % (context))
-                    auth_manager = AuthManager(service_name)
-                    ret = auth_manager.resource_acl_check(
-                                       user_uuid, team_uuid, team_priv,
-                                       project_uuid, project_priv,
-                                       resource_uuid, action)
-                    expire = int(time.time()) + 300
-                    caches.set(context, {"acl_check": ret, "expire": expire})
-                    log.debug('Cached acl check, context=%s' % (context))
-                else:
-                    log.debug('Cache acl hit, context=%s' % (context))
-                    ret = acl_info['acl_check']
-
-                log.debug('ack check result=%s' % (ret))
-
-                if ret == 0:
-                    try:
-                        return func(*args, **kwargs)
-                    except Exception, e:
-                        log.error('function(%s) exec error, reason = %s'
-                                  % (func.__name__, e))
-                        return request_result(999)
-                else:
-                    log.warning('Resource acl auth denied: user_uuid = %s, \
-                                 team_uuid=%s, team_priv=%s, project_uuid=%s, \
-                                 project_priv=%s, resource_uuid=%s, action=%s'
-                                % (user_uuid, team_uuid, team_priv,
+            if (acl_info is LocalCache.notFound):
+                log.debug('Cache acl not hit, context=%s' % (context))
+                auth_manager = AuthManager(service_name)
+                ret = auth_manager.resource_acl_check(
+                                   user_uuid, team_uuid, team_priv,
                                    project_uuid, project_priv,
-                                   resource_uuid, action))
+                                   resource_uuid, action)
+                expire = int(time.time()) + 300
+                caches.set(context, {"acl_check": ret, "expire": expire})
+                log.debug('Cached acl check, context=%s' % (context))
+            else:
+                log.debug('Cache acl hit, context=%s' % (context))
+                ret = acl_info['acl_check']
 
-                    return request_result(202)
+            log.debug('ack check result=%s' % (ret))
+
+            if ret == 0:
+                try:
+                    return func(*args, **kwargs)
+                except Exception, e:
+                    log.error('function(%s) exec error, reason = %s'
+                              % (func.__name__, e))
+                    return request_result(999)
+            else:
+                log.warning('Resource acl auth denied: user_uuid = %s, \
+                             team_uuid=%s, team_priv=%s, project_uuid=%s, \
+                             project_priv=%s, resource_uuid=%s, action=%s'
+                            % (user_uuid, team_uuid, team_priv,
+                               project_uuid, project_priv,
+                               resource_uuid, action))
+
+                return request_result(202)
 
         try:
             return __aclauth
