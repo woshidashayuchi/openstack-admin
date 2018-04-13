@@ -57,11 +57,12 @@ class SnapshotManager(object):
                                 team_uuid=team_uuid)
         except Exception, e:
             log.error('create the snapshot(db) error, reason is: %s' % e)
+            # rollback
             return request_result(401)
 
         log.info('op_result:%s, db_result: %s' % (op_result, db_result))
 
-        return request_result(200, {'resource_uuid': snapshot_uuid})
+        return request_result(0, {'resource_uuid': snapshot_uuid})
 
     def list(self, user_uuid, team_uuid, team_priv,
              project_uuid, project_priv, page_size, page_num):
@@ -111,7 +112,7 @@ class SnapshotManager(object):
                                'is_forced': is_forced,
                                'create_time': create_time})
 
-        return request_result(200, result)
+        return request_result(0, result)
 
 
 class SnapshotRouteManager(object):
@@ -143,7 +144,7 @@ class SnapshotRouteManager(object):
                 result['is_forced'] = snapshot[7]
                 result['create_time'] = time_diff(snapshot[8])
 
-        return request_result(200, result)
+        return request_result(0, result)
 
     def delete(self, snapshot_uuid):
         # op delete
@@ -162,7 +163,7 @@ class SnapshotRouteManager(object):
             return request_result(404)
         log.info('op_result is: %s, db_result is: %s' % (op_result, db_result))
 
-        return request_result(200, {'resource_uuid': snapshot_uuid})
+        return request_result(0, {'resource_uuid': snapshot_uuid})
 
     def logic_delete(self, snapshot_uuid):
         # op delete
@@ -180,7 +181,7 @@ class SnapshotRouteManager(object):
             return request_result(404)
         log.info('logic delete the snapshot op_result is: %s, '
                  'db_result is: %s' % (op_result, db_result))
-        return request_result(200, {'resource_uuid': snapshot_uuid})
+        return request_result(0, {'resource_uuid': snapshot_uuid})
 
     def recovery_msg_ready(self, snapshot_uuid):
         # 数据库查询信息
@@ -234,25 +235,25 @@ class SnapshotRouteManager(object):
                                                      team_uuid=team_uuid,
                                                      project_uuid=project_uuid,
                                                      user_uuid=user_uuid)
-            if op_result.get('status') != 200:
+            if op_result.get('status') != 0:
                 return request_result(1001)
 
             # 删除原来的snapshot及权限信息
             del_snap = self.delete(snapshot_uuid)
-            if del_snap.get('status') != 200:
+            if del_snap.get('status') != 0:
                 return del_snap
 
             return op_result
 
         else:
             op_token = self.op_driver.get_token('demo', 'qwe123')
-            if op_token.get('status') != 200:
+            if op_token.get('status') != 0:
                 return op_token
 
             token = op_token.get('result').get('token')
             up_dict['snapshot_uuid'] = snapshot_uuid
             result = self.cinder.update_snapshot(token, up_dict)
-            if result.get('status') != 200:
+            if result.get('status') != 0:
                 return result
 
             # update db
@@ -262,4 +263,4 @@ class SnapshotRouteManager(object):
                 log.error('update the snapshot(db) error, reason is: %s' % e)
                 return request_result(402)
             log.debug('update the snapshot(db) result is: %s' % db_result)
-            return request_result(200, {'resource_uuid': snapshot_uuid})
+            return request_result(0, {'resource_uuid': snapshot_uuid})

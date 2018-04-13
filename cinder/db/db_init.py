@@ -44,6 +44,7 @@ class DBInit(object):
                    Column('is_use_domain', String(64)),
                    Column('is_start', Integer),
                    Column('is_secret', Integer),
+                   Column('is_show', Integer),
                    Column('create_time', TIMESTAMP(True),
                           server_default=func.now(), nullable=False),
                    Column('update_time', TIMESTAMP(True),

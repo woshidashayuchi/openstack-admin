@@ -357,6 +357,13 @@ class NetworkDB(MysqlInit):
 
         return super(NetworkDB, self).exec_select_sql(sql)
 
+    def db_port_detail(self, port_uuid):
+        sql = "select uuid as port_uuid, vm_uuid, name, description, " \
+              "ip_address, network_uuid, mac_address, status, " \
+              "create_time, update_time from port where uuid='%s'" % port_uuid
+
+        return super(NetworkDB, self).exec_select_sql(sql)
+
     def db_port_if_can_del(self, port_uuid):
         sql = "select status from port where uuid='%s'" % port_uuid
         return super(NetworkDB, self).exec_select_sql(sql)

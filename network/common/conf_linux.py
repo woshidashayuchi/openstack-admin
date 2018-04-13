@@ -23,6 +23,7 @@ db_compute_passwd = 'qwe123'
 compute_database = 'compute'
 # cinder_url = "http://controller02:8776/v3/c5aea850b5f344e5828c103fc9a02b1a/"
 net_url = "http://172.16.0.46:8776/v3/475250b257f74c38ae63492161235ff7/"
+compute_url = "http://172.16.0.46:8774/v2.1/servers/"
 storage_db_user = 'cinder'
 storage_db_passwd = 'qwe123'
 storage_database = 'storage'

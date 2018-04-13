@@ -3,6 +3,7 @@
 # Time: 2018/3/15 10:58
 
 from common.logs import logging as log
+from common.time_log import time_log
 from common.request_result import request_result
 from manager.cinder_manager import CinderManager, CinderRouteManager
 
@@ -13,7 +14,7 @@ class CinderRpcAPIs(object):
         self.cinder_manager = CinderManager()
         self.cinder_route_manager = CinderRouteManager()
 
-    def osdisk_create(self):
+    def osdisk_create(self, context, parameters):
         try:
             pass
         except Exception, e:
@@ -43,7 +44,7 @@ class CinderRpcAPIs(object):
 
         return result
 
-    def clouddisk_info(self, context, parameters):
+    def clouddisk_list(self, context, parameters):
         try:
             page_size = parameters.get('page_size')
             page_num = parameters.get('page_num')
@@ -58,6 +59,17 @@ class CinderRpcAPIs(object):
             return request_result(999)
         return result
 
+    def clouddisk_info(self, context, parameters):
+        try:
+            volume_uuid = parameters.get('volume_uuid')
+            result = self.cinder_route_manager.volume_detail(context,
+                                                             volume_uuid)
+        except Exception, e:
+            log.error('get the volume detail(mq) error, reason is: %s' % e)
+            return request_result(999)
+
+        return result
+
     def clouddisk_recovery(self, context, parameters):
         volume_uuid = parameters.get('volume_uuid')
         up_dict = {'up_type': 'recovery'}
@@ -68,6 +80,15 @@ class CinderRpcAPIs(object):
                               volume_uuid=volume_uuid)
         except Exception, e:
             log.error('recovery the volume(mq) error, reason is: %s' % e)
+            return request_result(999)
+
+        return result
+
+    def disk_snapshot_create(self, context, parameters):
+        try:
+            result = self.cinder_manager.snap_create(context, parameters)
+        except Exception, e:
+            log.error('create the snapshot error, reason is: %s' % e)
             return request_result(999)
 
         return result
@@ -110,3 +131,33 @@ class CinderRpcAPIs(object):
         except Exception, e:
             log.error('revert snapshot(mq) wait error, reason is: %s' % e)
             return request_result(999)
+
+    @time_log
+    def attachment_create(self, context, parameters):
+
+        try:
+            server_uuid = parameters.get('server_uuid')
+            volume_uuid = parameters.get('volume_uuid')
+            result = self.cinder_manager.attachment_create(context,
+                                                           server_uuid,
+                                                           volume_uuid)
+        except Exception, e:
+            log.error('attachment create(mq) error, reason is: %s' % e)
+            return request_result(999)
+
+        return result
+
+    @time_log
+    def attachment_delete(self, context, parameters):
+        try:
+            volume_uuid = parameters.get('volume_uuid')
+
+            result = self.cinder_route_manager.attachment_delete(
+                          context,
+                          volume_uuid
+            )
+        except Exception, e:
+            log.error('attachment delete(mq) error, reason is: %s' % e)
+            return request_result(999)
+
+        return result

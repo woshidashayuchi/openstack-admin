@@ -17,6 +17,45 @@ from common.request_result import request_result
 import openstack
 
 
+def jisuan():
+    a = []
+    for i in range(999):
+        a.append(str(i))
+    # for j in a:
+    #     if '1' in j:
+    #         a.remove(j)
+    # for m in a:
+    #     if '2' in m:
+    #         a.remove(m)
+    #
+    # for n in a:
+    #     if '3' in n:
+    #         a.remove(n)
+    #
+    # for k in a:
+    #     if '4' in k:
+    #         a.remove(k)
+
+    # for x in a:
+    #     if '5' in x:
+    #         a.remove(x)
+
+    """
+    5: 324
+    6: 421
+    7: 534
+    8: 673
+    """
+    print len(a)
+
+def test_v():
+    headers = {'token': '68f50519-39b9-46e4-8568-1e090d547440'}
+    for i in range(31):
+
+        import requests
+        print requests.get(url='http://localhost:9999/api/v1.0/cinder/volumes?page_size=1&page_num=1',
+                     headers=headers).text
+
 class BaseManager(object):
 
     def __init__(self):
@@ -44,6 +83,9 @@ class BaseManager(object):
 
     def db_test(self):
         return self.db.volumes_list_get('aaa-bbb-ccc-ddd')
+
+
+
 # test code
 if __name__ == '__main__':
     m = BaseManager()
@@ -76,4 +118,5 @@ if __name__ == '__main__':
     #                                        description='this is also a test')
 
     print '4++++++++++++++++++++++'
-    print m.db_test()
+    # print m.db_test()
+    test_v()

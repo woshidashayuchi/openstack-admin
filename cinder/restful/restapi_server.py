@@ -7,6 +7,8 @@ path1 = sys.path[0] + '/..'
 path2 = sys.path[0] + '/../..'
 sys.path.append(path1)
 sys.path.append(path2)
+reload(sys)
+sys.setdefaultencoding('utf-8')
 from db.db_init import DBInit
 from db.data_init import DataInit
 from restapi_register import app_run

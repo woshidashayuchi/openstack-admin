@@ -16,7 +16,7 @@ class RabbitmqResponse(object):
 
     def rpc_add_resource(self):
         self.rpc_api.add_resource('osdisk_cre',
-                                  self.rpcapi_define.clouddisk_create)
+                                  self.rpcapi_define.osdisk_create)
 
         self.rpc_api.add_resource('clouddisk_cre',
                                   self.rpcapi_define.clouddisk_create)
@@ -24,11 +24,17 @@ class RabbitmqResponse(object):
         self.rpc_api.add_resource('clouddisk_del',
                                   self.rpcapi_define.clouddisk_delete)
 
+        self.rpc_api.add_resource('clouddisk_lis',
+                                  self.rpcapi_define.clouddisk_list)
+
         self.rpc_api.add_resource('clouddisk_inf',
                                   self.rpcapi_define.clouddisk_info)
 
         self.rpc_api.add_resource('clouddisk_rec',
                                   self.rpcapi_define.clouddisk_recovery)
+
+        self.rpc_api.add_resource('snap_cre',
+                                  self.rpcapi_define.disk_snapshot_create)
 
         self.rpc_api.add_resource('snap_del',
                                   self.rpcapi_define.disk_snapshot_delete)
@@ -38,6 +44,12 @@ class RabbitmqResponse(object):
 
         self.rpc_api.add_resource('snap_rev_wait',
                                   self.rpcapi_define.disk_snapshot_revert_wait)
+
+        self.rpc_api.add_resource('attach_cre',
+                                  self.rpcapi_define.attachment_create)
+
+        self.rpc_api.add_resource('attach_del',
+                                  self.rpcapi_define.attachment_delete)
 
     def rpc_exec(self, rpc_body):
         try:

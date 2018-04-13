@@ -31,7 +31,7 @@ class CinderDriver(object):
         elif 'description' in up_dict.keys():
             parameters_dict['volume']['description'] = up_dict['description']
         else:
-            return request_result(200, 'should not update')
+            return request_result(0, 'should not update')
         headers = {"X-Auth-Token": token}
         try:
             result = requests.put(url=cinder_url,
@@ -47,7 +47,7 @@ class CinderDriver(object):
             log.error('update the volume result(op) is: %s' % result.text)
             return request_result(602)
 
-        return request_result(200, {'resource_uuid': up_dict['volume_uuid']})
+        return request_result(0, {'resource_uuid': up_dict['volume_uuid']})
 
     def update_snapshot(self, token, up_dict):
         cinder_url = conf.cinder_url + \
@@ -73,7 +73,7 @@ class CinderDriver(object):
             log.error('update the volume result(op) is: %s' % result.text)
             return request_result(1002)
 
-        return request_result(200, {'snapshot_uuid': up_dict['snapshot_uuid']})
+        return request_result(0, {'snapshot_uuid': up_dict['snapshot_uuid']})
 
 # test code
 if __name__ == '__main__':

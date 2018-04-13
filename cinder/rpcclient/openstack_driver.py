@@ -357,8 +357,9 @@ class OpenstackDriver(object):
 
         return op_result.text
 
-    def flavor_update(self, flavor_uuid, name=None, disk=None, ram=None,
-                      vcpus=None, swap=0, is_public=True, ephemeral=0):
+    def flavor_update(self, flavor_uuid, name=None, vcpus=None,
+                      ram=None, swap=0, disk=None, is_public=True,
+                      ephemeral=0):
         """
 
         :param flavor_uuid:
@@ -474,7 +475,7 @@ class OpenstackDriver(object):
                                ephemeral=flavor_detail.ephemeral)
             raise Exception('update status code is not 200')
 
-
 if __name__ == '__main__':
     op = OpenstackDriver()
-    print op.flavor_update('0b1e6496-7fa9-4edd-95fb-9137f9ce6ec3', disk=50)
+    # op.vm_create('ceph', 'adc56679-b606-4d7e-ba51-0bf25da347d7', 'test00x', [{'uuid': 'f23415a1-3216-493a-936e-c2b6157f7f82'}],
+    #               flavor_id="a7868711-818d-4b62-9a5d-0d2ba7f3785b")

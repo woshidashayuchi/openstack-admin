@@ -3,8 +3,8 @@ clouds:
     region_name: RegionOne
     auth:
       auth_url: http://172.16.0.46:5000/v2.0/
-      username: wangxiaofe
-      password: wanxiaofe
+      username: wangxiaofeng
+      password: wangxiaofeng
       project_name: cloud
     example:
       image_name: fedora-20.x86_64

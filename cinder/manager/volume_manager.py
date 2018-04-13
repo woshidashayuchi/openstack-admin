@@ -17,48 +17,10 @@ class VolumeManager(object):
         self.op_driver = OpenstackDriver()
         self.db = CinderDB()
 
-    # size <size>
-    #     Volume size in GB(Required unless –snapshot or –source or
-    #     –source - replicated is specified)
-    # type <volume-type>
-    #     Set the type of volume
-    #     Select < volume - type > from the available types as shown
-    #     by volume type list.
-    # image <image>
-    #     Use <image> as source of volume(name or ID)
-    #     This is commonly used to create a boot volume for a server.
-    # snapshot <snapshot>
-    #     Use < snapshot > as source of volume(name or ID)
-    # source <volume>
-    #     Volume to clone(name or ID)
-    # source-replicated <replicated-volume>
-    #     Replicated volume to clone(name or ID)
-    # description <description>
-    #     Volume description
-    # user <user>
-    #     Specify an alternate user(name or ID)
-    # project <project>
-    #     Specify an alternate project(name or ID)
-    # availability-zone <availability-zone>
-    #     Create volume in <availability-zone>
-    # consistency - group < consistency - group >
-    #     Consistency group where the new volume belongs to
-    # property < key = value >
-    #     Set a property on this volume(repeat option to set
-    #     multiple properties)
-    # hint < key = value >
-    #     Arbitrary scheduler hint key-value pairs to help boot
-    #     an instance(repeat option to set multiple hints)
-    # multi-attach
-    #     Allow volume to be attached more than once(default to False)
-    # bootable
-    #     Mark volume as bootable
-    # non-bootable
-    #     Mark volume as non - bootable(default)
-    # read-only
-    #     Set volume to read-only access mode
-    # read-write Set volume to read-write access mode(default)
-    # <name> Volume name
+    def osdisk_create(self, name, description, volume_uuid, v_type,
+                      user_uuid, project_uuid, team_uuid,
+                      is_start=1, is_secret=0):
+        pass
 
     def create(self, name, size, description, v_type, conn_to=None,
                snapshot_uuid=None, is_use_domain=None, is_start=0,
@@ -82,6 +44,7 @@ class VolumeManager(object):
         :param team_uuid
         :return: volume_uuid """
         # 获取snapshot的相关信息
+
         op_result = self.op_driver.\
             volume_create(size=size,
                           name=name,
@@ -91,7 +54,7 @@ class VolumeManager(object):
                           source_volume_uuid=source_volume_uuid,
                           image_uuid=image_uuid)
 
-        if op_result.get('status') != 200:
+        if op_result.get('status') != 0:
             return op_result
         if snapshot_uuid is not None:
             size = op_result.get('result').get('size')
@@ -117,12 +80,16 @@ class VolumeManager(object):
                               get('result').get('id'))
         except Exception, e:
             log.error('create the volume(db) error, reason is: %s' % e)
+            # rollback
+            rollback = self.op_driver.\
+                volume_delete(op_result.get('result').get('id'))
+            log.info('rollback when create error the result is: %s' % rollback)
             return request_result(401)
 
         log.info('op: %s, db: %s' % (op_result, db_result))
 
-        return request_result(200, {'resource_uuid':
-                                    op_result.get('result').get('id')})
+        return request_result(0, {'resource_uuid':
+                                  op_result.get('result').get('id')})
 
     def list(self, user_uuid, team_uuid, team_priv,
              project_uuid, project_priv, page_size, page_num):
@@ -151,7 +118,8 @@ class VolumeManager(object):
         # except Exception, e:
         #     log.error('get the volume list(db) error, reason is: %s' % e)
         #     return request_result(403)
-
+        log.info('+++++++++++++')
+        log.info(db_result)
         if len(db_result) != 0:
             for volume in db_result:
                 volume_uuid = volume[0]
@@ -173,7 +141,7 @@ class VolumeManager(object):
                                'description': description,
                                'size': size,
                                'status': status,
-                               'type': v_type,
+                               'v_type': v_type,
                                'conn_to': conn_to,
                                'snapshot_uuid': snapshot_uuid,
                                'source_volume_uuid': source_volume_uuid,
@@ -183,16 +151,7 @@ class VolumeManager(object):
                                'is_secret': is_secret,
                                'create_time': create_time})
 
-        return request_result(200, result)
-
-    def osdisk_create(self, parameters):
-        pass
-
-    def logic_delete(self, volume_uuid):
-        pass
-
-    def delete(self, volume_uuid):
-        pass
+        return request_result(0, result)
 
 
 class VolumeRouteManager(object):
@@ -237,7 +196,7 @@ class VolumeRouteManager(object):
             return request_result(402)
 
         log.info('db: %s' % db_result)
-        return request_result(200, 'the volume is logic deleted')
+        return request_result(0, 'the volume is logic deleted')
 
     # 物理删除
     # 即: 删除所有的
@@ -247,20 +206,27 @@ class VolumeRouteManager(object):
         if del_check is False:
             return request_result(604)
 
+        try:
+            db_result = self.db.volume_logic_update(volume_uuid)
+        except Exception, e:
+            log.error('logic delete the volume(db) error, reason is: %s' % e)
+            return request_result(402)
+
         # delete the volume from op
         op_result = self.op_driver.volume_delete(volume_uuid)
-        if op_result.get('status') != 200:
+        if op_result.get('status') != 0:
+            self.db.volume_rollback(volume_uuid)
             return op_result
 
         # delete db
-        try:
-            db_result = self.db.volume_delete(volume_uuid)
-        except Exception, e:
-            log.error('delete the volume(db) error, reason is: %s' % e)
-            return request_result(404)
+        # try:
+        #     db_result = self.db.volume_delete(volume_uuid)
+        # except Exception, e:
+        #     log.error('delete the volume(db) error, reason is: %s' % e)
+        #     return request_result(404)
 
         log.info('op_result: %s, db_result: %s' % (op_result, db_result))
-        return request_result(200, {'volume_uuid': volume_uuid})
+        return request_result(0, {'volume_uuid': volume_uuid})
 
     def detail(self, volume_uuid):
         result = dict()
@@ -276,7 +242,7 @@ class VolumeRouteManager(object):
                 result['description'] = volume[2]
                 result['size'] = volume[3]
                 result['status'] = volume[4]
-                result['type'] = volume[5]
+                result['v_type'] = volume[5]
                 result['conn_to'] = volume[6]
                 result['is_use_domain'] = volume[7]
                 result['is_start'] = volume[8]
@@ -286,19 +252,19 @@ class VolumeRouteManager(object):
                 result['image_uuid'] = volume[12]
                 result['create_time'] = time_diff(volume[13])
 
-        return request_result(200, result)
+        return request_result(0, result)
 
     def update(self, up_dict, volume_uuid):
         # update volume(op)
         op_token = self.op_driver.get_token(self.op_user,
                                             self.op_pass)
-        if op_token.get('status') != 200:
+        if op_token.get('status') != 0:
             return op_token
 
         token = op_token.get('result').get('token')
         up_dict['volume_uuid'] = volume_uuid
         result = self.cinder.update_volume(token, up_dict)
-        if result.get('status') != 200:
+        if result.get('status') != 0:
             return result
 
         # update volume(db)
@@ -308,7 +274,7 @@ class VolumeRouteManager(object):
             log.error('update the database error, reason is: %s' % e)
             return request_result(402)
 
-        return request_result(200, {'resource_uuid': volume_uuid})
+        return request_result(0, {'resource_uuid': volume_uuid})
 
 
 # 清除过期存储卷
@@ -383,3 +349,25 @@ def volume_status_monitor():
                      'done all check times: %d' % (update_num,
                                                    all_num))
             time.sleep(5)
+
+
+# 清除删除痕迹
+def volume_del_mark_clean():
+    op = OpenstackDriver()
+    db = CinderDB()
+    while True:
+        # 查询数据库中不予以展现的volume列表
+        try:
+            db_result = db.volume_list_clean()
+        except Exception, e:
+            log.error('SERVICE(volume del mark clean)：GET THE VOLUME LIST '
+                      'FROM DB ERROR, REASON IS: %s' % e)
+            continue
+        if len(db_result) == 0:
+            continue
+        for ret in db_result:
+            volume_uuid = ret[0]
+            op_result = op.volume_detail(volume_uuid)
+            if op_result.get('status') != 0:
+                continue
+        time.sleep(20)

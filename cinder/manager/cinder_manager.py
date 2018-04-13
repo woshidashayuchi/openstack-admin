@@ -19,8 +19,64 @@ class CinderManager(object):
         self.attach_manager = AttachmentManager()
 
     @acl_check('storage')
-    def volume_create(self, context, parameters):
+    def osdisk_create(self, context, parameters):
+        try:
+            token = context['token']
+            source_ip = context.get('source_ip')
+            user_info = token_auth(context['token'])['result']
+            user_uuid = user_info.get('user_uuid')
+            team_uuid = user_info.get('team_uuid')
+            project_uuid = user_info.get('project_uuid')
 
+            log.info('the token is: %s, source_ip is: %s, user_uuid is: %s,'
+                     'team_uuid is: %s, project_uuid is: %s' % (token,
+                                                                source_ip,
+                                                                user_uuid,
+                                                                team_uuid,
+                                                                project_uuid))
+            name = 'osdisk'
+            description = 'osdisk'
+            volume_uuid = parameters.get('volume_uuid')
+            v_type = 'system'
+            # size = parameters.get('size')
+            # is_start = parameters.get('is_start')
+            # conn_to = parameters.get('conn_to')
+            # snapshot_uuid = parameters.get('snapshot_uuid')
+            # source_volume_uuid = parameters.get('source_volume_uuid')
+            # image_uuid = parameters.get('image_uuid')
+            # is_use_domain = parameters.get('is_use_domain')
+            # is_secret = parameters.get('is_secret')
+            # if is_start is None:
+            #     is_start = 0
+            # if is_secret is None:
+            #     is_secret = 0
+
+            parameter_check(volume_uuid, exist='yes')
+        except Exception, e:
+            log.error('parameters error, reason is: %s' % e)
+            return request_result(101)
+
+        result = self.v_manager.osdisk_create(
+            name=name,
+            # size=size,
+            # is_start=is_start,
+            description=description,
+            v_type=v_type,
+            volume_uuid=volume_uuid,
+            # conn_to=conn_to,
+            # snapshot_uuid=snapshot_uuid,
+            # source_volume_uuid=source_volume_uuid,
+            # image_uuid=image_uuid,
+            # is_use_domain=is_use_domain,
+            # is_secret=is_secret,
+            user_uuid=user_uuid,
+            project_uuid=project_uuid,
+            team_uuid=team_uuid)
+
+        return result
+
+    @acl_check('storage')
+    def volume_create(self, context, parameters):
         try:
             token = context['token']
             source_ip = context.get('source_ip')
@@ -176,6 +232,8 @@ class CinderManager(object):
                                                                  user_uuid,
                                                                  team_uuid,
                                                                  project_uuid))
+            parameter_check(server_uuid, exist='yes')
+            parameter_check(volume_uuid, exist='yes')
         except Exception, e:
             log.error('parameters error, reason is: %s' % e)
             return request_result(101)
@@ -246,7 +304,6 @@ class CinderRouteManager(object):
         log.debug('get the snapshot detail, the context is: %s' % context)
         return self.snap_manager.detail(snapshot_uuid)
 
-    def attachment_delete(self, attachment_uuid, server_uuid):
+    def attachment_delete(self, context, volume_uuid):
         return self.attach_manager.\
-            attachment_delete(attachment_uuid=attachment_uuid,
-                              server_uuid=server_uuid)
+            attachment_delete(volume_uuid)

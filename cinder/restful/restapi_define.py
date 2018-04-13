@@ -169,7 +169,7 @@ class TypeApi(Resource):
             log.error('Token check error, reason=%s' % e)
 
             return request_result(201)
-
+        log.info(source_ip)
         try:
             param = json.loads(request.get_data())
         except Exception, e:
@@ -189,7 +189,7 @@ class TypeApi(Resource):
         except Exception, e:
             log.error('page_size or page_num error, reason is: %s' % e)
             return request_result(101)
-
+        log.debug('page_size: %d, page_num: %d' % (page_size, page_num))
         result = self.volume_type.list()
         return result
 
@@ -355,7 +355,7 @@ class AttachmentRouteApi(Resource):
         self.attach = CinderRouteManager()
 
     # 分离卷（即将卷从云机卸载）
-    def delete(self, attachment_uuid):
+    def delete(self, volume_uuid):
         try:
             token = request.headers.get('token')
             token_auth(token)
@@ -367,13 +367,12 @@ class AttachmentRouteApi(Resource):
 
             return request_result(201)
 
-        try:
-            param = json.loads(request.get_data())
-        except Exception, e:
-            log.error('parameters error, reason is: %s' % e)
-            return request_result(101)
-        server_uuid = param.get('server_uuid')
-        context = context_data(token, attachment_uuid, "delete", source_ip)
+        # try:
+        #     param = json.loads(request.get_data())
+        # except Exception, e:
+        #     log.error('parameters error, reason is: %s' % e)
+        #     return request_result(101)
+        # volume_uuid = param.get('volume_uuid')
+        context = context_data(token, volume_uuid, "delete", source_ip)
         return self.attach.attachment_delete(context=context,
-                                             attachment_uuid=attachment_uuid,
-                                             server_uuid=server_uuid)
+                                             volume_uuid=volume_uuid)

@@ -35,11 +35,12 @@ class OsInterfaceOperateManager(object):
             return request_result(402)
         return op_result
 
-    def remove_os_interface(self, vm_uuid, port_uuid):
+    def remove_os_interface(self, port_uuid):
         try:
             db_check = self.db.db_port_attach_check(port_uuid)
             if db_check[0][0] is None:
                 return request_result(0)
+            vm_uuid = db_check[0][0]
         except Exception, e:
             log.error('check the port if need unattach error, '
                       'reason is: %s' % e)

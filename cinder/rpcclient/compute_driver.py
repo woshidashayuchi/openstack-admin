@@ -344,9 +344,10 @@ class ComputeDriver(object):
 
         return result
 
-    def vnic_attach(self, token, vm_uuid, vnic_uuid):
+    def vnic_attach(self, token, vnic_uuid, vm_uuid, vm_name=None,
+                    source_ip=socket.gethostbyname(socket.gethostname())):
 
-        context = context_data(token, vnic_uuid, "update", self.local_ip)
+        context = context_data(token, vnic_uuid, "update", source_ip)
 
         parameters = {
             'vm_uuid': vm_uuid,
@@ -363,10 +364,10 @@ class ComputeDriver(object):
         if result.get('status') != 0:
             raise Exception(result.get('msg'))
 
-    def vnic_unattach(self, token, vm_uuid, vnic_uuid):
-        context = context_data(token, vnic_uuid, "update", self.local_ip)
+    def vnic_unattach(self, token, vnic_uuid,
+                      source_ip=socket.gethostbyname(socket.gethostname())):
+        context = context_data(token, vnic_uuid, "update", source_ip)
         parameters = {
-            'vm_uuid': vm_uuid,
             'port_uuid': vnic_uuid
         }
         try:

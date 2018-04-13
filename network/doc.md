@@ -32,7 +32,7 @@ add: {"subnet_uuid":"","rtype":"add"}
 remove: {"subnet_uuid":"", "rtype":"remove"}
 
 port:
-create: {"network_uuid":"","name":"","description":""}
+create: {"network_uuid":"f23415a1-3216-493a-936e-c2b6157f7f82","name":"","description":""}
 
 
 代码相关：

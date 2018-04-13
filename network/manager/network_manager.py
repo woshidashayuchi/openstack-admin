@@ -496,6 +496,17 @@ class PortRouteManager(object):
             return request_result(101)
         return self.port_manager.port_operate_delete(port_uuid)
 
+    @acl_check('network')
+    def port_detail(self, context, port_uuid):
+        try:
+            parameter_check(port_uuid, exist='yes')
+        except Exception, e:
+            log.error('parameters error, context=%s, '
+                      'reason is: %s' % (context, e))
+            return request_result(101)
+
+        return self.port_manager.port_operate_detail(port_uuid)
+
 
 # RPC MANAGER
 class RpcManager(object):
@@ -566,12 +577,9 @@ class OsInterfaceRouterManager(object):
     def os_interface_remove(self, context, parameters):
         log.debug(context)
         try:
-            vm_uuid = parameters.get('vm_uuid')
             port_uuid = parameters.get('port_uuid')
-            parameter_check(vm_uuid, exist='yes')
             parameter_check(port_uuid, exist='yes')
         except Exception, e:
             log.error('parameters error, reason is: %s' % e)
             return request_result(101)
-        return self.os_interface.remove_os_interface(vm_uuid,
-                                                     port_uuid)
+        return self.os_interface.remove_os_interface(port_uuid)

@@ -90,8 +90,27 @@ class PortRouteOperateManager(object):
         self.driver = OpenstackDriver()
         self.db = NetworkDB()
 
-    def port_operate_detail(self):
-        pass
+    def port_operate_detail(self, port_uuid):
+        result = dict()
+        try:
+            db_result = self.db.db_port_detail(port_uuid)
+        except Exception, e:
+            log.error('get the detail of port(db) error, reason is: %s' % e)
+            return request_result(404)
+        if len(db_result[0]) != 0:
+            result['port_uuid'] = port_uuid,
+            result['vm_uuid'] = db_result[0][1]
+            result['name'] = db_result[0][2]
+            result['description'] = db_result[0][3]
+            result['ip_address'] = db_result[0][4]
+            result['network_uuid'] = db_result[0][5]
+            result['mac_address'] = db_result[0][6]
+            result['status'] = db_result[0][7]
+            result['create_time'] = time_diff(db_result[0][8])
+            result['update_time'] = time_diff(db_result[0][9])
+
+        return request_result(0, result)
+
 
     def port_operate_delete(self, port_uuid):
         # check: if can delete the port

@@ -35,7 +35,7 @@ class VolumeTypeManager(object):
 
         log.info('op_result: %s, db_result: %s' % (op_result, db_result))
 
-        return request_result(200, 'type is creating')
+        return request_result(0, 'type is creating')
 
     def list(self):
         result = []
@@ -59,7 +59,7 @@ class VolumeTypeManager(object):
                                'is_public': is_public,
                                'create_time': create_time})
 
-        return request_result(200, result)
+        return request_result(0, result)
 
 
 class VolumeRouteTypeManager(object):
@@ -88,7 +88,7 @@ class VolumeRouteTypeManager(object):
 
         log.info('op_result(delete) is: %s, '
                  'db_result(delete) is: %s' % (op_result, db_result))
-        return request_result(200, 'delete success')
+        return request_result(0, 'delete success')
 
     def detail(self, type_uuid):
         result = dict()
@@ -106,4 +106,4 @@ class VolumeRouteTypeManager(object):
                 result['is_public'] = v_type[4]
                 result['create_time'] = time_diff(v_type[5])
 
-        return request_result(200, result)
+        return request_result(0, result)

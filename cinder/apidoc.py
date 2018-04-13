@@ -2,7 +2,7 @@
 # Author: wxf<wangxiaofeng1@hualala.com>
 # Time: 2018/3/19 9:41
 """
-this is the api doc
+this is the cinder api doc
 """
 """
 @apiDefine CODE_VOL_POST_0
@@ -42,7 +42,7 @@ this is the api doc
         'description'= description
         'size'= size
         'status'= status
-        'type'= type
+        'v_type'= type
         'conn_to'= conn_to
         'is_use_domain': is_use_domain
         'is_start': 1/0
@@ -61,39 +61,38 @@ this is the api doc
     "status": 0,
     "msg": "OK",
     "result": {
-        "status": 0,
-        "msg": "OK",
-        "result":{{'volume_uuid': volume_uuid,
-                   'name': name,
-                   'description': description,
-                   'size': size,
-                   'status': status,
-                   'type': v_type,
-                   'conn_to': conn_to,
-                   'snapshot_uuid': snapshot_uuid,
-                   'source_volume_uuid': source_volume_uuid,
-                   'image_uuid': image_uuid,
-                   'is_use_domain': is_use_domain,
-                   'is_start': is_start,
-                   'is_secret': is_secret,
-                   'create_time': create_time},
-                   ...
-                   {'volume_uuid': volume_uuid,
-                   'name': name,
-                   'description': description,
-                   'size': size,
-                   'status': status,
-                   'type': v_type,
-                   'conn_to': conn_to,
-                   'snapshot_uuid': snapshot_uuid,
-                   'source_volume_uuid': source_volume_uuid,
-                   'image_uuid': image_uuid,
-                   'is_use_domain': is_use_domain,
-                   'is_start': is_start,
-                   'is_secret': is_secret,
-                   'create_time': create_time},
-                   ...
+        {'volume_uuid': volume_uuid,
+         'name': name,
+         'description': description,
+         'size': size,
+         'status': status,
+         'v_type': v_type,
+         'conn_to': conn_to,
+         'snapshot_uuid': snapshot_uuid,
+         'source_volume_uuid': source_volume_uuid,
+         'image_uuid': image_uuid,
+         'is_use_domain': is_use_domain,
+         'is_start': is_start,
+         'is_secret': is_secret,
+         'create_time': create_time},
+               ...
+        {'volume_uuid': volume_uuid,
+         'name': name,
+         'description': description,
+         'size': size,
+         'status': status,
+         'v_type': v_type,
+         'conn_to': conn_to,
+         'snapshot_uuid': snapshot_uuid,
+         'source_volume_uuid': source_volume_uuid,
+         'image_uuid': image_uuid,
+         'is_use_domain': is_use_domain,
+         'is_start': is_start,
+         'is_secret': is_secret,
+         'create_time': create_time},
+              ...
     }
+}
 """
 """
 @apiDefine CODE_SNAPSHOT_LIST_0
@@ -144,8 +143,8 @@ this is the api doc
  }
 """
 """
-@api {post} /api/v1.0/cinder/volumes 1 创建存储卷
-@apiName post
+@api {post} /api/v1.0/cinder/volumes 1 创建存储卷（一般）
+@apiName post-1
 @apiGroup volume
 @apiVersion 1.0.0
 @apiDescription 存储
@@ -161,6 +160,7 @@ this is the api doc
 }
 @apiUse CODE_VOL_POST_0
 """
+
 """
 @api {get} /api/v1.0/cinder/volumes?page_num=<page_num>&page_size=<page_size> 2 获取存储卷列表
 @apiName list
@@ -284,7 +284,27 @@ this is the api doc
 @apiUse CODE_SNAPSHOT_POST_0
 """
 """
-@api {post} /api/v1.0/cinder/volumes 1 绑定卷到实例
+@api {post} /api/v1.0/cinder/volumes 6 创建存储卷（其他方式）
+@apiName post-2
+@apiGroup volume
+@apiVersion 1.0.0
+@apiDescription 存储
+@apiPermission all
+@apiParam {json} header {"token": "string"}
+@apiParam {json} body
+@apiParamExample body
+{
+     "name":"xxxx-zzzzz",
+      "snapshot_uuid":"xxxxxx-xxxxx-xxxxx", # 基于快照
+      "source_volume_uuid":"xxxxxx-xxxxxx-xxxxx", # 基于其他存储卷
+      "image_uuid":'xxx-xxx-xxx',  # 基于镜像
+      "v_type":"lvm",
+      "description":"bind token test 2"
+}
+@apiUse CODE_VOL_POST_0
+"""
+"""
+@api {post} /api/v1.0/cinder/attachments 1 绑定卷到实例
 @apiName post
 @apiGroup attachment
 @apiVersion 1.0.0
@@ -300,11 +320,11 @@ this is the api doc
 @apiUse CODE_ATTACHMENT_POST_0
 """
 """
-@api {delete} /api/v1.0/cinder/snapshots/<snapshot_uuid>?logic=1/0 2 解绑
+@api {delete} /api/v1.0/cinder/attachments/<volume_uuid> 2 解绑
 @apiName delete
 @apiGroup attachment
 @apiVersion 1.0.0
-@apiDescription 接触卷绑定
+@apiDescription 解除卷绑定
 @apiPermission all
 @apiParam {json} header {"token": "string"}
 @apiParam {json} args

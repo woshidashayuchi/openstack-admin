@@ -106,21 +106,22 @@ class CinderDB(MysqlInit):
         sql = "insert into volume(uuid, " \
               "name, description, size, status, type, conn_to, " \
               "snapshot_uuid, source_volume_uuid, image_uuid, is_use_domain, is_start, " \
-              "is_secret) VALUES " \
+              "is_secret, is_show) VALUES " \
               "('%s', '%s', '%s', %d, '%s', '%s', '%s', " \
-              "'%s', '%s', '%s', '%s', %d, %d)" % (volume_uuid,
-                                                   name,
-                                                   description,
-                                                   size,
-                                                   'creating',
-                                                   v_type,
-                                                   conn_to,
-                                                   snapshot_uuid,
-                                                   source_volume_uuid,
-                                                   image_uuid,
-                                                   is_use_domain,
-                                                   is_start,
-                                                   is_secret)
+              "'%s', '%s', '%s', '%s', %d, %d, %d)" % (volume_uuid,
+                                                       name,
+                                                       description,
+                                                       size,
+                                                       'creating',
+                                                       v_type,
+                                                       conn_to,
+                                                       snapshot_uuid,
+                                                       source_volume_uuid,
+                                                       image_uuid,
+                                                       is_use_domain,
+                                                       is_start,
+                                                       is_secret,
+                                                       1)
 
         return super(CinderDB, self).exec_update_sql(sql_acl, sql)
 
@@ -140,7 +141,6 @@ class CinderDB(MysqlInit):
                                                        team_uuid,
                                                        start_position,
                                                        page_size)
-        log.info('-----sql----: %s' % sql)
         return super(CinderDB, self).exec_select_sql(sql)
 
     def volume_list_project(self, team_uuid, project_uuid, page_size,
@@ -156,7 +156,10 @@ class CinderDB(MysqlInit):
                                                        team_uuid,
                                                        start_position,
                                                        page_size)
+        return super(CinderDB, self).exec_select_sql(sql)
 
+    def volume_list_clean(self):
+        sql = "select uuid from volume where is_show=0"
         return super(CinderDB, self).exec_select_sql(sql)
 
     def volume_detail(self, volume_uuid):
@@ -320,6 +323,10 @@ class CinderDB(MysqlInit):
 
         return super(CinderDB, self).exec_update_sql(sql)
 
+    def volume_rollback(self, volume_uuid):
+        sql = "update volume set is_show=1 where uuid='%s'" % volume_uuid
+        return super(CinderDB, self).exec_update_sql(sql)
+
     def snapshot_update(self, up_dict, snapshot_uuid):
         up_columns = up_dict.keys()
         for column in up_columns:
@@ -347,15 +354,15 @@ class CinderDB(MysqlInit):
     # attachment
     def attachment_create(self, attachment_uuid, server_uuid, volume_uuid,
                           device, team_uuid, project_uuid, user_uuid):
-        sql_acl = "insert into resources_acl(resource_uuid, resource_type," \
-                  "admin_uuid, team_uuid, project_uuid, user_uuid) " \
-                  "values('%s', '%s', '%s', '%s', '%s', " \
-                  "'%s',)" % (attachment_uuid,
-                              'attach',
-                              '0',
-                              team_uuid,
-                              project_uuid,
-                              user_uuid)
+        # sql_acl = "insert into resources_acl(resource_uuid, resource_type," \
+        #           "admin_uuid, team_uuid, project_uuid, user_uuid) " \
+        #           "values ('%s', '%s', '%s', '%s', '%s', " \
+        #           "'%s')" % (attachment_uuid,
+        #                       'attach',
+        #                       '0',
+        #                       team_uuid,
+        #                       project_uuid,
+        #                       user_uuid)
 
         sql = "insert into attachment(uuid, server_uuid, " \
               "volume_uuid, device) values ('%s', '%s', " \
@@ -368,9 +375,13 @@ class CinderDB(MysqlInit):
                           "where uuid='%s'" % (server_uuid,
                                                volume_uuid)
 
-        return super(CinderDB, self).exec_update_sql(sql_acl,
-                                                     sql,
+        return super(CinderDB, self).exec_update_sql(sql,
                                                      sql_volume_conn)
+   
+    def get_attachment_info(self, volume_uuid):
+        sql = "select uuid, server_uuid from attachment where " \
+              "volume_uuid='%s'"  % volume_uuid
+        return super(CinderDB, self).exec_select_sql(sql)
 
     def attachment_delete(self, attachment_uuid, conn_to):
         sql_volume = "update volume set conn_to='%s' where " \
@@ -379,9 +390,8 @@ class CinderDB(MysqlInit):
 
         sql = "delete from attachment where uuid='%s'" % attachment_uuid
 
-        sql_acl = "delete from resources_acl where resource_" \
-                  "uuid='%s'" % (attachment_uuid)
+        # sql_acl = "delete from resources_acl where resource_" \
+        #           "uuid='%s'" % (attachment_uuid)
 
         return super(CinderDB, self).exec_update_sql(sql_volume,
-                                                     sql,
-                                                     sql_acl)
+                                                     sql)
