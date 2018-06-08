@@ -5,7 +5,7 @@ from common.logs import logging as log
 from common.time_log import time_log
 from common.request_result import request_result
 from manager.network_manager import RpcManager, PortRouteManager, \
-     OsInterfaceManager, OsInterfaceRouterManager
+     OsInterfaceManager, OsInterfaceRouterManager, PortManager
 
 
 class NetworkRpcAPIs(object):
@@ -15,6 +15,7 @@ class NetworkRpcAPIs(object):
         self.port_manager = PortRouteManager()
         self.os_manager = OsInterfaceManager()
         self.os_router_manager = OsInterfaceRouterManager()
+        self.port = PortManager()
 
     @time_log
     def floatingip_bind(self, context, parameters):
@@ -84,4 +85,23 @@ class NetworkRpcAPIs(object):
                       'reason is: %s' % e)
             return request_result(999)
 
+        return result
+
+    @time_log
+    def os_port_add(self, context, parameters):
+        try:
+            result = self.port.os_port_create(context, parameters)
+        except Exception, e:
+            log.error('add the port to network error, reason is: %s' % e)
+            return request_result(999)
+
+        return result
+
+    @time_log
+    def os_port_delete(self, context, parameters):
+        try:
+            result = self.port_manager.os_port_delete(context, parameters)
+        except Exception, e:
+            log.error('delete the port error, reason is: %s' % e)
+            return request_result(999)
         return result

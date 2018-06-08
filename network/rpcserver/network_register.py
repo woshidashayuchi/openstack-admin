@@ -25,6 +25,10 @@ class RabbitmqResponse(object):
                                   self.rpcapi_define.vnic_attach)
         self.rpc_api.add_resource('vnic_unattach',
                                   self.rpcapi_define.vnic_unattach)
+        self.rpc_api.add_resource('os_port_add',
+                                  self.rpcapi_define.os_port_add)
+        self.rpc_api.add_resource('os_port_delete',
+                                  self.rpcapi_define.os_port_delete)
 
     def rpc_exec(self, rpc_body):
         try:

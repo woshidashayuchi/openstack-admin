@@ -49,10 +49,12 @@ this is the network api doc
 @apiSuccessExample 返回
 {
     "msg": "ok",
-    "result": [
+    "result": {
+        "count": int,
+        "network_list":[
         {
             "description": "string",
-            "is_admin_state_up": int,
+            "is_admin_state_up": int,  
             "is_router_external": int,
             "is_shared": int,
             "name": "string",
@@ -98,7 +100,10 @@ this is the network api doc
 @apiSuccessExample 返回
 {
     "msg": "ok",
-    "result": [
+    
+    "result": {
+        "count": int,
+        "network_list": [
         {
             
             "description": "string",
@@ -179,7 +184,9 @@ this is the network api doc
 @apiSuccessExample 返回
 {
     "msg": "ok",
-    "result": [
+    "result": {
+        "count": int,
+        "floatingip_list":[
         {
             "description": "string",
             "fixed_ip_address": "string",
@@ -215,25 +222,58 @@ this is the network api doc
 @apiSuccessExample 返回
 {
     "msg": "ok",
-    "result": [
-        {
-            "description": "string",
-            "ip_address": "string",
-            "mac_address": "string",
-            "name": "string",
-            "port_uuid": "string",
-            "status": "DOWN",
-            "create_time": "YYYY-MM-DD HH:MM:SS",
-            "update_time": "YYYY-MM-DD HH:MM:SS"
-        }
-        {
-            ···
-        }
-        {
-            ···
-        }
-    ],
-    "status": 0
+    "result": {
+         "count": int
+         "ports_list": [
+            {
+                "name": "string",
+                "description": "string",
+                "ip_address": "string",
+                "mac_address": "string",
+                "port_uuid": "string",
+                "vm_uuid": "string",
+                "status": "string",   # in-use or available
+                "create_time": "YYYY-MM-DD HH:MM:SS",
+                "update_time": "YYYY-MM-DD HH:MM:SS"
+            }
+            {
+                ···
+            }
+            {
+                ···
+            }
+        ],
+        "status": 0
+}
+"""
+"""
+@apiDefine CODE_PORT_LIST_1
+@apiSuccessExample 返回
+{
+    "msg": "ok",
+    "result": {
+         "count": int
+         "ports_list": [
+            {
+                "name": "string",
+                "description": "string",
+                "ip_address": "string",
+                "mac_address": "string",
+                "port_uuid": "string",
+                "network_uuid": "string",
+                "vm_uuid": "string",
+                "status": "string",   # in-use or available
+                "create_time": "YYYY-MM-DD HH:MM:SS",
+                "update_time": "YYYY-MM-DD HH:MM:SS"
+            }
+            {
+                ···
+            }
+            {
+                ···
+            }
+        ],
+        "status": 0
 }
 """
 """
@@ -511,17 +551,27 @@ this is the network api doc
 @apiUse CODE_PORT_POST_0
 """
 """
-@api {post} /api/v1.0/network/ports?network_uuid=<string>&page_num=<int>&page_size=<int> 4.2 port列表
-@apiName ports_list
+@api {get} /api/v1.0/network/ports?network_uuid=<string>&page_num=<int>&page_size=<int> 4.2 port列表
+@apiName ports_list_network
 @apiGroup port
 @apiVersion 1.0.0
-@apiDescription port列表
+@apiDescription port列表(某网络)
 @apiPermission all
 @apiParam {json} header {"token": "string"}
 @apiUse CODE_PORT_LIST_0
 """
 """
-@api {delete} /api/v1.0/network/ports/<port_uuid> 4.3 删除port
+@api {get} /api/v1.0/network/ports?page_num=<int>&page_size=<int> 4.3 port列表
+@apiName ports_list
+@apiGroup port
+@apiVersion 1.0.0
+@apiDescription port列表(全部)
+@apiPermission all
+@apiParam {json} header {"token": "string"}
+@apiUse CODE_PORT_LIST_1
+"""
+"""
+@api {delete} /api/v1.0/network/ports/<port_uuid> 4.4 删除port
 @apiName port_delete
 @apiGroup port
 @apiVersion 1.0.0

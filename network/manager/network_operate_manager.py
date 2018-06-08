@@ -2,6 +2,7 @@
 # Author: wxf<wangxiaofeng1@hualala.com>
 # Time: 2018/3/19 14:44
 from common.logs import logging as log
+from common.parameters import allocation_pools_conform, dns_nameservers_conform, gateway_ip_create
 from common.request_result import request_result
 from driver.openstack_driver import OpenstackDriver
 from db.network_db import NetworkDB
@@ -28,12 +29,21 @@ class NetworkOperateManager(object):
         else:
             is_shared = 0
             is_shared_1 = False
+        try:
+            same_name = self.db.network_name_check(name, user_uuid,
+                                                   project_uuid, team_uuid)
+            if same_name[0][0] != 0:
+                return request_result(302)
+        except Exception, e:
+            log.error('check the name is used(db) error, reason is: %s' % e)
+            return request_result(999)
 
         op_result = self.op_driver.\
             network_create(name=name,
                            description=description,
-                           is_admin_state_up=is_admin_state_up_1,
-                           is_shared=is_shared_1)
+                           # is_admin_state_up=is_admin_state_up_1,
+                           # is_shared=is_shared_1
+                          )
         if op_result.get('status') != 0:
             return op_result
         network_uuid = op_result.get('result')
@@ -68,7 +78,7 @@ class NetworkOperateManager(object):
 
     def network_list(self, user_uuid, team_uuid, team_priv,
                      project_uuid, project_priv, page_size, page_num):
-        result = []
+        ret = []
         try:
             if ((project_priv is not None) and ('R' in project_priv)) \
                     or ((team_priv is not None) and ('R' in team_priv)):
@@ -76,44 +86,66 @@ class NetworkOperateManager(object):
                                                             project_uuid,
                                                             page_size,
                                                             page_num)
+                db_count = self.db.db_network_project_count(team_uuid,
+                                                            project_uuid)
+                count = db_count[0][0]
             else:
                 db_result = self.db.db_network_list_user(team_uuid,
                                                          project_uuid,
                                                          user_uuid,
                                                          page_size,
                                                          page_num)
-
+                db_count = self.db.db_network_user_count(team_uuid,
+                                                         project_uuid,
+                                                         user_uuid)
+                count = db_count[0][0]
         except Exception, e:
             log.error('Database select error, reason=%s' % e)
             return request_result(403)
 
-        if len(db_result) != 0:
-            for network in db_result:
-                name = network[0]
-                subnet_name = network[1]
-                cidr = network[2]
-                description = network[3]
-                is_shared = network[4]
-                is_router_external = network[5]
-                size = network[6]
-                status = network[7]
-                is_admin_state_up = network[8]
-                create_time = time_diff(network[9])
-                update_time = time_diff(network[11])
-                network_uuid = network[10]
-                result.append({'network_uuid': network_uuid,
-                               'name': name,
-                               'subnet_name_and_cidr': subnet_name+' '+cidr,
-                               'description': description,
-                               'is_shared': is_shared,
-                               'is_router_external': is_router_external,
-                               'size': size,
-                               'status': status,
-                               'is_admin_state_up': is_admin_state_up,
-                               'create_time': create_time,
-                               'update_time': update_time})
+        try:
+            if len(db_result) != 0:
+                for network in db_result:
+                    name = network[0]
+                    subnet_name = network[1]
+                    cidr = network[2]
+                    description = network[3]
+                    is_shared = network[4]
+                    is_router_external = network[5]
+                    size = network[6]
+                    status = network[7]
+                    is_admin_state_up = network[8]
+                    create_time = time_diff(network[9])
+                    update_time = time_diff(network[11])
+                    network_uuid = network[10]
+                    ret.append({'network_uuid': network_uuid,
+                                'name': name,
+                                'subnet_name_and_cidr': subnet_name+' '+cidr,
+                                'description': description,
+                                'is_shared': is_shared,
+                                'is_router_external': is_router_external,
+                                # 'size': size,
+                                'status': status,
+                                'is_admin_state_up': is_admin_state_up,
+                                'create_time': create_time,
+                                'update_time': update_time})
+            result = {
+                'count': count,
+                'network_list': ret
+            }
+        except Exception, e:
+            log.error('explain the db result error, reason is: %s' % e)
+            return request_result(999)
 
         return request_result(0, result)
+
+    def check_network_status(self, network_uuid):
+        try:
+            network_status = self.op_driver.network_status(network_uuid)
+            return network_status
+        except Exception, e:
+            log.error('check the status of network error, reason is: %s' % e)
+            return request_result(999)
 
     def subnet_create(self, name, description, is_dhcp_enabled, network_uuid,
                       ip_version, gateway_ip, allocation_pools, cidr,
@@ -137,6 +169,14 @@ class NetworkOperateManager(object):
         :param team_uuid:
         :return:
         """
+        try:
+            allocation_pools_op = allocation_pools_conform(allocation_pools)
+            dns_nameservers_op = dns_nameservers_conform(dns_nameservers)
+            gateway_ip = gateway_ip_create(cidr)
+        except Exception, e:
+            log.error('exchange the parameters error, reason is: %s' % e)
+            return request_result(999)
+        
         if is_dhcp_enabled == 1:
             is_dhcp_enabled_1 = True
         else:
@@ -150,9 +190,9 @@ class NetworkOperateManager(object):
                           network_id=network_uuid,
                           ip_version=ip_version,
                           gateway_ip=gateway_ip,
-                          allocation_pools=allocation_pools,
+                          allocation_pools=allocation_pools_op,
                           cidr=cidr,
-                          dns_nameservers=dns_nameservers,
+                          dns_nameservers=dns_nameservers_op,
                           host_routes=host_routes)
         if op_result.get('status') != 0:
             return op_result
@@ -189,7 +229,7 @@ class NetworkOperateManager(object):
 
     def subnet_list(self, user_uuid, team_uuid, team_priv,
                     project_uuid, project_priv, page_size, page_num):
-        result = []
+        ret = []
         try:
             if ((project_priv is not None) and ('R' in project_priv)) \
                     or ((team_priv is not None) and ('R' in team_priv)):
@@ -197,27 +237,41 @@ class NetworkOperateManager(object):
                                                            project_uuid,
                                                            page_size,
                                                            page_num)
+                db_count = self.db.db_subnet_project_count(team_uuid,
+                                                           project_uuid)
+                count = db_count[0][0]
             else:
                 db_result = self.db.db_subnet_list_user(team_uuid,
                                                         project_uuid,
                                                         user_uuid,
                                                         page_size,
                                                         page_num)
+                db_count = self.db.db_subnet_user_count(team_uuid,
+                                                        project_uuid,
+                                                        user_uuid)
+                count = db_count[0][0]
 
         except Exception, e:
             log.error('Database select error, reason=%s' % e)
             return request_result(403)
+        try:
+            if len(db_result) != 0:
+                for subnet in db_result:
+                    subnet_uuid = subnet[0]
+                    name = subnet[1]
+                    description = subnet[2]
 
-        if len(db_result) != 0:
-            for subnet in db_result:
-                subnet_uuid = subnet[0]
-                name = subnet[1]
-                description = subnet[2]
-
-                result.append({'subnet_uuid': subnet_uuid,
-                               'name': name,
-                               'description': description})
-
+                    ret.append({'subnet_uuid': subnet_uuid,
+                                'name': name,
+                                'description': description})
+            result = {
+                'count': count,
+                'subnet_list': ret
+            }
+        except Exception, e:
+            log.error('explain the db result error, reason is: %s' % e)
+            return request_result(999)
+        return request_result(0, result)
 
 class NetworkOperateRouteManager(object):
     def __init__(self):
@@ -240,15 +294,29 @@ class NetworkOperateRouteManager(object):
                 result['description'] = network[3]
                 result['is_shared'] = network[4]
                 result['is_router_external'] = network[5]
-                result['size'] = network[6]
+                # result['size'] = network[6]
                 result['status'] = network[7]
                 result['is_admin_state_up'] = network[8]
+                result['gateway_ip'] = network[11]
+                result['allocation_pools'] = network[12]
+                result['dns_nameservers'] = network[13]
+                result['host_routes'] = network[14]
                 result['create_time'] = time_diff(network[9])
                 result['update_time'] = time_diff(network[10])
 
         return request_result(0, result)
 
     def network_delete(self, network_uuid):
+        # 首先检查该网络有没有被虚拟机使用,如果正在使用，则禁止删除
+        try:
+            used_vm = self.db.delete_network_chk(network_uuid)[0][0]
+            if used_vm != 0:
+                return request_resul5(404)
+        except Exception, e:
+            log.error('check the network if used by vm error,'
+                      'reason is: %s' % e)
+            return request_result(403)
+        
         # 删除openstack环境网络
         op_result = self.op_driver.network_delete(network_uuid)
         if op_result.get('status') != 0:

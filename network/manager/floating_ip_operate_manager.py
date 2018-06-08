@@ -3,6 +3,7 @@
 # Time: 2018/3/27 14:11
 from driver.openstack_driver import OpenstackDriver
 from db.network_db import NetworkDB
+from rpcclient.status_driver import StatusDriver
 from common.request_result import request_result
 from common.logs import logging as log
 from common.skill import time_diff
@@ -11,6 +12,7 @@ from common.skill import time_diff
 class FloatingIpOperateManager(object):
     def __init__(self):
         self.op = OpenstackDriver()
+        self.status_update = StatusDriver()
         self.db = NetworkDB()
 
     def floating_ip_create(self, floating_network_id, user_uuid,
@@ -48,7 +50,7 @@ class FloatingIpOperateManager(object):
         except Exception, e:
             log.error('create the floating ip(db) error, reason is: %s' % e)
             return request_result(401)
-
+        self.status_update.floatip_status(floatingip_uuid)
         return request_result(0, {'resource_uuid': floatingip_uuid,
                                   'name': name,
                                   'description': description,
@@ -60,7 +62,7 @@ class FloatingIpOperateManager(object):
 
     def floating_ip_list(self, user_uuid, team_uuid, team_priv,
                          project_uuid, project_priv, page_size, page_num):
-        result = []
+        ret = []
         try:
             if ((project_priv is not None) and ('R' in project_priv)) \
                     or ((team_priv is not None) and ('R' in team_priv)):
@@ -68,47 +70,61 @@ class FloatingIpOperateManager(object):
                                                                 project_uuid,
                                                                 page_size,
                                                                 page_num)
+                db_count = self.db.floatingip_project_count(team_uuid,
+                                                            project_uuid)
+                count = db_count[0][0]
             else:
                 db_result = self.db.db_floating_ip_list(team_uuid,
                                                         project_uuid,
                                                         user_uuid,
                                                         page_size,
                                                         page_num)
-
+                db_count = self.db.floatingip_user_count(team_uuid,
+                                                         project_uuid,
+                                                         user_uuid)
+                count = db_count[0][0]
         except Exception, e:
             log.error('Database select error, reason=%s' % e)
             return request_result(403)
 
-        if len(db_result) != 0:
-            for fltip in db_result:
-                floatingip_uuid = fltip[0]
-                name = fltip[1]
-                description = fltip[2]
-                router_uuid = fltip[3]
-                fixed_ip_address = fltip[4]
-                floating_ip_address = fltip[5]
-                revision_number = fltip[6]
-                port_id = fltip[7]
-                vm_uuid = fltip[10]
-                status = fltip[11]
-                create_time = time_diff(fltip[8])
-                update_time = time_diff(fltip[9])
-                result.append(
-                    {
-                        'floatingip_uuid': floatingip_uuid,
-                        'name': name,
-                        'description': description,
-                        'router_uuid': router_uuid,
-                        'fixed_ip_address': fixed_ip_address,
-                        'floating_ip_address': floating_ip_address,
-                        'revision_number': revision_number,
-                        'port_id': port_id,
-                        'vm_uuid': vm_uuid,
-                        'status': status,
-                        'create_time': create_time,
-                        'update_time': update_time
-                    }
-                )
+        try:
+            if len(db_result) != 0:
+                for fltip in db_result:
+                    floatingip_uuid = fltip[0]
+                    name = fltip[1]
+                    description = fltip[2]
+                    router_uuid = fltip[3]
+                    fixed_ip_address = fltip[4]
+                    floating_ip_address = fltip[5]
+                    revision_number = fltip[6]
+                    port_id = fltip[7]
+                    vm_uuid = fltip[10]
+                    status = fltip[11]
+                    create_time = time_diff(fltip[8])
+                    update_time = time_diff(fltip[9])
+                    ret.append(
+                        {
+                            'floatingip_uuid': floatingip_uuid,
+                            'name': name,
+                            'description': description,
+                            'router_uuid': router_uuid,
+                            'fixed_ip_address': fixed_ip_address,
+                            'floating_ip_address': floating_ip_address,
+                            'revision_number': revision_number,
+                            'port_id': port_id,
+                            'vm_uuid': vm_uuid,
+                            'status': status,
+                            'create_time': create_time,
+                            'update_time': update_time
+                        }
+                    )
+            result = {
+                'count': count,
+                'floatingip_list': ret
+            }
+        except Exception, e:
+            log.error('explain the db result error, reason is: %s' % e)
+            return request_result(999)
         return request_result(0, result)
 
     def floating_ip_detail(self, floatingip_uuid):

@@ -14,6 +14,7 @@ from common.request_result import request_result
 import json
 import requests
 from common import conf
+from time import sleep
 
 
 class OpenstackDriver(object):
@@ -65,17 +66,63 @@ class OpenstackDriver(object):
             return request_result(701)
 
         try:
-            op_result = self.conn.network.\
-                create_network(name=name,
-                               description=description,
-                               is_admin_state_up=is_admin_state_up,
-                               shared=is_shared
-                               )
+            if description is None:
+                op_result = self.conn.network.\
+                    create_network(name=name,
+                                   is_admin_state_up=is_admin_state_up,
+                                   shared=is_shared
+                                   )
+            else:
+                op_result = self.conn.network.\
+                    create_network(name=name,
+                                   description=description,
+                                   is_admin_state_up=is_admin_state_up,
+                                   shared=is_shared
+                                   )
         except Exception, e:
             log.error('create the network(op) error, reason is: %s' % e)
             return request_result(1020)
 
         return request_result(0, op_result.id)
+
+    def network_status(self, network_uuid):
+        if self.conn is False:
+            return request_result(701)
+        try:
+            cnt = 0
+            while True:
+                op_result = self.conn.network.get_network(network_uuid)
+                if op_result.status.lower() == 'active':
+                    return request_result(0)
+                else:
+                    if cnt >= 50:
+                        return request_result(999)
+                    cnt += 1
+                    sleep(0.2)
+                    continue
+        except Exception, e:
+            log.error('get the status of network(op) error, reason is: %s' % e)
+            return request_result(1023)
+
+    def router_status(self, router_uuid):
+        if self.conn is False:
+            return request_result(701)
+        try:
+            cnt = 0
+            while True:
+                op_result = self.conn.network.get_router(router_uuid)
+                if op_result.status.lower() == 'active':
+                    return request_result(0)
+                else:
+                    if cnt >= 50:
+                        return request_result(999)
+                    cnt += 1
+                    sleep(0.2)
+                    continue
+        except Exception, e:
+            log.error('get the status of network(op) error, reason is: %s' % e)
+            return request_result(1023)
+    
 
     def subnet_create(self, name, description, is_dhcp_enabled, network_id,
                       ip_version, gateway_ip, allocation_pools, cidr,
@@ -97,17 +144,29 @@ class OpenstackDriver(object):
         if self.conn is False:
             return request_result(701)
         try:
-            op_result = self.conn.network.\
-                create_subnet(name=name,
-                              description=description,
-                              is_dhcp_enabled=is_dhcp_enabled,
-                              network_id=network_id,
-                              ip_version=ip_version,
-                              gateway_ip=gateway_ip,
-                              allocation_pools=allocation_pools,
-                              cidr=cidr,
-                              dns_nameservers=dns_nameservers,
-                              host_routes=host_routes)
+            if description is None:
+                op_result = self.conn.network.\
+                    create_subnet(name=name,
+                                  is_dhcp_enabled=is_dhcp_enabled,
+                                  network_id=network_id,
+                                  ip_version=ip_version,
+                                  gateway_ip=gateway_ip,
+                                  allocation_pools=allocation_pools,
+                                  cidr=cidr,
+                                  dns_nameservers=dns_nameservers,
+                                  host_routes=host_routes)
+            else:
+                op_result = self.conn.network.\
+                    create_subnet(name=name,
+                                  description=description,
+                                  is_dhcp_enabled=is_dhcp_enabled,
+                                  network_id=network_id,
+                                  ip_version=ip_version,
+                                  gateway_ip=gateway_ip,
+                                  allocation_pools=allocation_pools,
+                                  cidr=cidr,
+                                  dns_nameservers=dns_nameservers,
+                                  host_routes=host_routes)
         except Exception, e:
             log.error('create the subnet(op) error, reason is: %s' % e)
             return request_result(1030)
@@ -201,18 +260,33 @@ class OpenstackDriver(object):
 
         return request_result(0, op_result)
 
-    def router_create(self, name, description, is_admin_state_up):
+    def router_create(self, name, description, is_admin_state_up,
+                      out_network_uuid):
         if self.conn is False:
             return request_result(701)
-
+        if out_network_uuid is None:
+            external_gateway_info = {}
+        else:
+            external_gateway_info = {"network_id": out_network_uuid}
+        
         try:
-            op_result = self.conn.network.create_router(
+            if description is None:
+                op_result = self.conn.network.create_router(
                             name=name,
-                            description=description,
                             # external_gateway_info=''
                             # availability_zones=['nova'],
                             is_admin_state_up=is_admin_state_up,
+                            external_gateway_info=external_gateway_info
                         )
+            else:
+                op_result = self.conn.network.create_router(
+                                name=name,
+                                description=description,
+                                # external_gateway_info=''
+                                # availability_zones=['nova'],
+                                is_admin_state_up=is_admin_state_up,
+                                external_gateway_info=external_gateway_info
+                            )
         except Exception, e:
             log.error('router create(op) error, reason is: %s' % e)
             return request_result(1041)
@@ -271,26 +345,28 @@ class OpenstackDriver(object):
         :param gateway: external_gateway_info: {'network_id': ''}
         :return:
         """
-        """
+        log.info('router_uuid: %s, oute_network: %s' % (router_uuid, network_uuid))
+        data_dict = {"network_id": network_uuid}
         if self.conn is False:
             return request_result(701)
         try:
             op_result = self.conn.network.add_gateway_to_router(router_uuid,
-                                                                **gateway)
-            print('---: %s' % op_result)
+                                                                external_gateway_info=data_dict)
         except Exception, e:
             log.error('add the gateway to router(op) error, reason is: %s' % e)
             return request_result(1042)
         log.info('add the gateway to router , the result is: %s' % op_result)
         return request_result(0)
+        
         """
         op_token = self.get_token(conf.op_user,
                                   conf.op_pass)
         if op_token.get('status') != 0:
             log.error('get the token of openstack error, '
                       'token result is: %s' % op_token)
+            return request_result(1042)
         token = op_token.get('result').get('token')
-        net_url = conf.net_url + 'routers/' + router_uuid
+        net_url = conf.router_url + 'routers/' + router_uuid
         headers = {"X-Auth-Token": token}
         # add
         if network_uuid is not None and network_uuid != '':
@@ -315,9 +391,12 @@ class OpenstackDriver(object):
         result = requests.put(url=net_url, json=up_dict, headers=headers,
                               timeout=10)
         if result.status_code != 200:
+            log.error('update the router(op) error, '
+                      'update result is: %s' % result)
             return request_result(1042)
         else:
             return request_result(0, {'resource_uuid': router_uuid})
+        """
 
     # def remove_gateway_from_router(self, router_uuid, network_uuid):
     #     if self.conn is False:
@@ -571,5 +650,7 @@ if __name__ == '__main__':
     # print op.add_ip_to_port(port, [{'ip_address':'172.20.2.12'}])
     # print op.add_os_interface('c12db4ae-0ef2-41c7-bd3e-4bc459b3cd9c',
     #                           '32debd06-dc60-446c-953f-a182e2d2f553')
-    print op.remove_os_interface('c12db4ae-0ef2-41c7-bd3e-4bc459b3cd9c',
-                                 '56f9ea45-81e9-496c-98a7-8c94bbaab3a7')
+    # print op.remove_os_interface('c12db4ae-0ef2-41c7-bd3e-4bc459b3cd9c',
+    #                              '56f9ea45-81e9-496c-98a7-8c94bbaab3a7')
+
+    print op.network_create(name='test607', description='test607')

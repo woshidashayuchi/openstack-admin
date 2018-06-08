@@ -90,6 +90,21 @@ def allocation_pools_conform(allocation_pools):
 
     return result
 
+def dns_nameservers_conform(dns_nameservers):
+    # 源数据格式 x.x.x.x,y.y.y.y
+    result = []
+    if dns_nameservers is not None:
+        for dns_server in dns_nameservers.split(','):
+            result.append(dns_server)
+
+    return result
+
+def gateway_ip_create(cidr):
+    f = cidr.split('/')[0].split('.')
+    gateway_ip = f[0]+'.'+f[1]+'.'+f[2]+'.'+'1'
+    return gateway_ip
+    
+
 
 if __name__ == "__main__":
 

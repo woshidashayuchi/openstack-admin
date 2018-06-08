@@ -39,8 +39,14 @@ class NetworkApi(Resource):
             log.error('Token check error, reason=%s' % e)
             return request_result(201)
         try:
-            page_size = int(request.args.get('page_size'))
-            page_num = int(request.args.get('page_num'))
+            page_size = request.args.get('page_size')
+            page_num = request.args.get('page_num')
+            if page_size is None and page_num is None:
+                page_size = 1000
+                page_num = 1
+            else:
+                page_size = int(page_size)
+                page_num = int(page_num)
         except Exception, e:
             log.error('page_size or page_num error, reason is: %s' % e)
             return request_result(101)
@@ -192,8 +198,14 @@ class RouterApi(Resource):
             log.error('Token check error, reason=%s' % e)
             return request_result(201)
         try:
-            page_size = int(request.args.get('page_size'))
-            page_num = int(request.args.get('page_num'))
+            page_size = request.args.get('page_size')
+            page_num = request.args.get('page_num')
+            if page_size is None and page_num is None:
+                page_size = 1000
+                page_num = 1
+            else:
+                page_size = int(page_size)
+                page_num = int(page_num)
         except Exception, e:
             log.error('page_size or page_num error, reason is: %s' % e)
             return request_result(101)
@@ -272,8 +284,14 @@ class FloatingipApi(Resource):
             return request_result(201)
 
         try:
-            page_size = int(request.args.get('page_size'))
-            page_num = int(request.args.get('page_num'))
+            page_size = request.args.get('page_size')
+            page_num = request.args.get('page_num')
+            if page_size is None and page_num is None:
+                page_size = 1000
+                page_num = 1
+            else:
+                page_size = int(page_size)
+                page_num = int(page_num)
         except Exception, e:
             log.error('page_size or page_num error, reason is: %s' % e)
             return request_result(101)
@@ -362,11 +380,17 @@ class PortApi(Resource):
             return request_result(201)
         try:
             network_uuid = request.args.get('network_uuid')
-            page_num = int(request.args.get('page_num'))
-            page_size = int(request.args.get('page_size'))
+            page_num = request.args.get('page_num')
+            page_size = request.args.get('page_size')
+            if page_size is None and page_num is None:
+                page_size = 1000
+                page_num = 1
+            else:
+                page_size = int(page_size)
+                page_num = int(page_num)
             if network_uuid is None:
                 context = context_data(token, 'net_net_usr_com', 'read')
-                return self.port.get_ports(context)
+                return self.port.get_ports(context, page_num, page_size)
         except Exception, e:
             log.error('parameters error, reason is: %s' % e)
             return request_result(101)

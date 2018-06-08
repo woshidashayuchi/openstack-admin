@@ -36,6 +36,18 @@ class NetworkDB(MysqlInit):
 
         return super(NetworkDB, self).exec_update_sql(sql1, sql2, sql3, sql4)
 
+    def network_name_check(self, network_name, user_uuid, project_uuid,
+                           team_uuid):
+        sql = "select count(*) from network a, resources_acl b  " \
+              "where a.name='%s' and a.uuid=b.resource_uuid and " \
+              "b.user_uuid='%s' and " \
+              "b.project_uuid='%s' and " \
+              "b.team_uuid='%s'" % (network_name,
+                                    user_uuid,
+                                    project_uuid,
+                                    team_uuid)
+        return super(NetworkDB, self).exec_select_sql(sql)
+
     def db_network_create(self, network_uuid, name, description,
                           is_admin_state_up=1, is_shared=0,
                           team_uuid=None, project_uuid=None, user_uuid=None):
@@ -82,7 +94,7 @@ class NetworkDB(MysqlInit):
                                                           team_uuid,
                                                           start_position,
                                                           page_size)
-        log.debug('user network list sql is: %s' % sql)
+        log.info('user network list sql is: %s' % sql)
         return super(NetworkDB, self).exec_select_sql(sql)
 
     def db_network_list_project(self, team_uuid, project_uuid,
@@ -111,13 +123,30 @@ class NetworkDB(MysqlInit):
                                                           start_position,
                                                           page_size)
 
-        log.debug('project network list sql is: %s' % sql)
+        log.info('project network list sql is: %s' % sql)
+        return super(NetworkDB, self).exec_select_sql(sql)
+
+    def db_network_user_count(self, team_uuid, project_uuid, user_uuid):
+        sql = "select count(*) from network a, resources_acl b where " \
+              "a.is_show=1 and a.uuid=b.resource_uuid and " \
+              "b.project_uuid='%s' and b.team_uuid='%s' and " \
+              "b.user_uuid='%s'" % (project_uuid,
+                                    team_uuid,
+                                    user_uuid)
+        return super(NetworkDB, self).exec_select_sql(sql)
+
+    def db_network_project_count(self, team_uuid, project_uuid):
+        sql = "select count(*) from network a, resources_acl b where " \
+              "a.is_show=1 and a.uuid=b.resource_uuid and " \
+              "b.project_uuid='%s' and b.team_uuid='%s'" % (project_uuid,
+                                                            team_uuid)
         return super(NetworkDB, self).exec_select_sql(sql)
 
     def db_network_detail(self, network_uuid):
         sql = "select a.name, b.name as subnet_name, b.cidr, a.description, " \
               "a.is_shared, a.is_router_external, a.size, a.status, " \
-              "a.is_admin_state_up, a.create_time,a.update_time from " \
+              "a.is_admin_state_up, a.create_time,a.update_time,b.gateway_ip," \
+              "b.allocation_pools,b.dns_nameservers,b.host_routes from " \
               "network a, subnet b " \
               "where a.uuid=b.network_uuid and a.uuid='%s'" % network_uuid
 
@@ -128,6 +157,11 @@ class NetworkDB(MysqlInit):
               "uuid='%s'" % network_uuid
 
         return super(NetworkDB, self).exec_update_sql(sql)
+    
+    def delete_network_chk(self, network_uuid):
+        sql = "select count(*) from port where network_uuid='%s' and " \
+              "vm_uuid is not NULL and vm_uuid != 'None'" % (network_uuid)
+        return super(NetworkDB, self).exec_select_sql(sql)
 
     def db_network_delete(self, network_uuid):
         # 删除网络
@@ -192,7 +226,7 @@ class NetworkDB(MysqlInit):
                                    is_dhcp_enabled, network_uuid, ip_version,
                                    gateway_ip, allocation_pools, cidr,
                                    dns_nameservers, host_routes)
-
+        log.info('create sql is: (%s;%s)' % (sql_acl, sql))
         return super(NetworkDB, self).exec_update_sql(sql_acl, sql)
 
     def db_subnet_list_user(self, team_uuid, project_uuid, user_uuid,
@@ -221,9 +255,25 @@ class NetworkDB(MysqlInit):
                                                  page_size)
         return super(NetworkDB, self).exec_select_sql(sql)
 
-    def db_subnet_list_project(self, team_uuid, project_uuid,
-                             page_size,  page_num):
-        pass
+    def db_subnet_user_count(self, team_uuid, project_uuid, user_uuid):
+        sql = "select count(*) from subnet a, resources_acl b where " \
+              "a.uuid=b.resource_uuid and " \
+              "b.user_uuid='%s' and b.project_uuid='%s' and " \
+              "b.team_uuid='%s'" % (user_uuid,
+                                    project_uuid,
+                                    team_uuid)
+        return super(NetworkDB, self).exec_select_sql(sql)
+
+    def db_subnet_project_count(self, team_uuid, project_uuid):
+        sql = "select count(*) from subnet a, resources_acl b where " \
+              "a.uuid=b.resource_uuid and " \
+              "b.project_uuid='%s' and " \
+              "b.team_uuid='%s'" % (project_uuid,
+                                    team_uuid)
+        return super(NetworkDB, self).exec_select_sql(sql)
+
+    # def db_subnet_project_count(self, team_uuid, project_uuid):
+    #     pass
 
     def db_subnet_delete(self, subnet_uuid):
         del_acl = "delete from resources_acl where " \
@@ -233,8 +283,24 @@ class NetworkDB(MysqlInit):
 
         return super(NetworkDB, self).exec_update_sql(del_acl, del_sql)
 
+    def get_subnet_uuid_by_network(self, network_uuid):
+        sql = "select uuid from subnet where network_uuid='%s'" % network_uuid
+        return super(NetworkDB, self).exec_select_sql(sql)
+
+    def check_router_name(self, router_name, user_uuid, project_uuid,
+                          team_uuid):
+        sql = "select count(*) from router a, resources_acl b where " \
+              "a.name='%s' and a.uuid=b.resource_uuid and " \
+              "b.user_uuid='%s' and b.project_uuid='%s' and " \
+              "b.team_uuid='%s'" % (router_name,
+                                    user_uuid,
+                                    project_uuid,
+                                    team_uuid)
+        return super(NetworkDB, self).exec_select_sql(sql)
+
     # router
-    def db_router_create(self, name, description, is_admin_state_up,
+    def db_router_create(self, name, description, out_network_uuid, 
+                         is_admin_state_up,
                          user_uuid, project_uuid, team_uuid, router_uuid):
         sql_acl = "insert into resources_acl(resource_uuid, resource_type," \
                   "admin_uuid, team_uuid, project_uuid, user_uuid) " \
@@ -245,19 +311,21 @@ class NetworkDB(MysqlInit):
                                                               project_uuid,
                                                               user_uuid)
         sql = "insert into router(uuid, name, description, " \
-              "is_admin_state_up) values " \
-              "('%s', '%s', '%s', %d)" % (router_uuid,
-                                          name,
-                                          description,
-                                          is_admin_state_up)
-
+              "external_gateway_info, " \
+              "is_admin_state_up, status, is_show) values " \
+              "('%s', '%s', '%s', '%s', %d, 'creating', 1)" % (router_uuid,
+                                                               name,
+                                                               description,
+                                                               out_network_uuid,
+                                                               is_admin_state_up)
         return super(NetworkDB, self).exec_update_sql(sql_acl, sql)
 
     def db_router_list_project(self, team_uuid, project_uuid,
                                page_size, page_num):
         start_position = (page_num - 1) * page_size
         sql = "select a.uuid as router_uuid, a.name, a.description, " \
-              "a.status,a.create_time,a.update_time from router a, " \
+              "a.status,a.create_time,a.update_time, " \
+              "a.external_gateway_info from router a, " \
               "resources_acl b where " \
               "a.uuid=b.resource_uuid and a.is_show=1 and " \
               "b.team_uuid='%s' and b.project_uuid='%s' " \
@@ -265,13 +333,15 @@ class NetworkDB(MysqlInit):
                                                      project_uuid,
                                                      start_position,
                                                      page_size)
+        log.info('sql is: %s' % sql)
         return super(NetworkDB, self).exec_select_sql(sql)
 
     def db_router_list_user(self, team_uuid, project_uuid, user_uuid,
                             page_size, page_num):
         start_position = (page_num - 1) * page_size
         sql = "select a.uuid as router_uuid, a.name, a.description, " \
-              "a.status,a.create_time,a.update_time from router a, " \
+              "a.status,a.create_time,a.update_time, " \
+              "a.external_gateway_info from router a, " \
               "resources_acl b where " \
               "a.uuid=b.resource_uuid and a.is_show=1 and " \
               "b.team_uuid='%s' and b.project_uuid='%s' and " \
@@ -281,6 +351,25 @@ class NetworkDB(MysqlInit):
                                                      user_uuid,
                                                      start_position,
                                                      page_size)
+        log.info('sql: %s' % sql)
+        return super(NetworkDB, self).exec_select_sql(sql)
+
+    def router_pro_count(self, team_uuid, project_uuid):
+        sql = "select count(*) from router a, " \
+              "resources_acl b where " \
+              "a.uuid=b.resource_uuid and a.is_show=1 and " \
+              "b.team_uuid='%s' and b.project_uuid='%s'" % (team_uuid,
+                                                            project_uuid)
+        return super(NetworkDB, self).exec_select_sql(sql)
+
+    def router_usr_count(self, team_uuid, project_uuid, user_uuid):
+        sql = "select count(*) from router a, " \
+              "resources_acl b where " \
+              "a.uuid=b.resource_uuid and a.is_show=1 and " \
+              "b.team_uuid='%s' and b.project_uuid='%s' and " \
+              "b.user_uuid='%s'" % (team_uuid,
+                                    project_uuid,
+                                    user_uuid)
         return super(NetworkDB, self).exec_select_sql(sql)
 
     def db_router_detail(self, router_uuid):
@@ -357,6 +446,62 @@ class NetworkDB(MysqlInit):
 
         return super(NetworkDB, self).exec_select_sql(sql)
 
+    def ports_all_project(self, team_uuid, project_uuid, page_size, page_num):
+        start_position = (page_num - 1) * page_size
+        sql = "select a.uuid, a.vm_uuid, a.name, a.description, a.ip_address, " \
+              "a.network_uuid, a.mac_address, a.status, a.create_time, " \
+              "a.update_time from port a, resources_acl b where " \
+              "a.uuid=b.resource_uuid and b.project_uuid='%s' and " \
+              "b.team_uuid='%s' order by create_time desc limit %d, " \
+              "%d" % (project_uuid,
+                      team_uuid,
+                      start_position,
+                      page_size)
+        return super(NetworkDB, self).exec_select_sql(sql)
+
+    def ports_all_count_project(self, team_uuid, project_uuid):
+        sql = "select count(*) from port a, resources_acl b where " \
+              "a.uuid = b.resource_uuid and b.team_uuid='%s' and " \
+              "b.project_uuid='%s'" % (team_uuid, project_uuid)
+
+        return super(NetworkDB, self).exec_select_sql(sql)
+
+    def ports_all_users(self, team_uuid, project_uuid, user_uuid,
+                        page_size, page_num):
+        start_position = (page_num - 1) * page_size
+        sql = "select a.uuid, a.vm_uuid, a.name, a.description, a.ip_address, " \
+              "a.network_uuid, a.mac_address, a.status, a.create_time, " \
+              "a.update_time from port a, resources_acl b where " \
+              "a.uuid=b.resource_uuid and b.project_uuid='%s' and " \
+              "and b.user_uuid = '%s' " \
+              "b.team_uuid='%s' order by create_time desc limit %d, " \
+              "%d" % (project_uuid,
+                      user_uuid,
+                      team_uuid,
+                      start_position,
+                      page_size)
+
+        return super(NetworkDB, self).exec_select_sql(sql)
+
+    def ports_all_users_count(self, team_uuid, project_uuid, user_uuid):
+        sql = "select count(*) from port a, resources_acl b where " \
+              "a.uuid==b.resource_uuid and b.team_uuid='%s' and " \
+              "b.project_uuid='%s' and b.team_uuid='%s' and b.user_" \
+              "uuid = '%s'" % (project_uuid, team_uuid, user_uuid)
+
+        return super(NetworkDB, self).exec_select_sql(sql)
+
+    def ports_all_count_user(self):
+        pass
+
+    def ports_all_user(self):
+        pass
+
+    def db_ports_count(self, network_uuid):
+        sql = "select count(*) from port where " \
+              "network_uuid='%s'" % network_uuid
+        return super(NetworkDB, self).exec_select_sql(sql)
+
     def db_port_detail(self, port_uuid):
         sql = "select uuid as port_uuid, vm_uuid, name, description, " \
               "ip_address, network_uuid, mac_address, status, " \
@@ -381,11 +526,13 @@ class NetworkDB(MysqlInit):
         return super(NetworkDB, self).exec_select_sql(sql)
 
     def db_port_vm_attach(self, port_uuid, vm_uuid):
-        sql = "update port set vm_uuid='%s' where uuid='%s'" % (vm_uuid, port_uuid)
+        sql = "update port set vm_uuid='%s', status='in-use' where " \
+              "uuid='%s'" % (vm_uuid, port_uuid)
         return super(NetworkDB, self).exec_update_sql(sql)
 
     def db_port_vm_unattach(self, port_uuid):
-        sql = "update port set vm_uuid=NULL where uuid='%s'" % port_uuid
+        sql = "update port set vm_uuid=NULL, status='available' " \
+              "where uuid='%s'" % port_uuid
         return super(NetworkDB, self).exec_update_sql(sql)
 
     def db_router_logic_del(self, router_uuid):
@@ -459,6 +606,22 @@ class NetworkDB(MysqlInit):
                                                  page_size)
         return super(NetworkDB, self).exec_select_sql(sql)
 
+    def floatingip_project_count(self, team_uuid, project_uuid):
+        sql = "select count(*) from  floating_ip a, " \
+              "resources_acl b WHERE a.is_show=1 and a.uuid=b.resource_uuid " \
+              "and b.team_uuid='%s' and b.project_uuid='%s'" % (team_uuid,
+                                                                project_uuid)
+        return super(NetworkDB, self).exec_select_sql(sql)
+
+    def floatingip_user_count(self, team_uuid, project_uuid, user_uuid):
+        sql = "select count(*) from floating_ip a, " \
+              "resources_acl b WHERE a.is_show=1 and a.uuid=b.resource_uuid " \
+              "and b.team_uuid='%s' and b.project_uuid='%s' " \
+              "and b.user_uuid='%s'" % (team_uuid,
+                                        project_uuid,
+                                        user_uuid)
+        return super(NetworkDB, self).exec_select_sql(sql)
+
     def db_floating_ip_detail(self, floatingip_uuid):
         sql = "select a.uuid as floatingip_uuid, a.name, a.description, " \
               "a.router_uuid, a.fixed_ip_address, a.floating_ip_address," \
@@ -513,11 +676,11 @@ class NetworkDB(MysqlInit):
         return super(NetworkDB, self).exec_select_sql(sql)
 
     def db_floating_ip_bind(self, vm_uuid, floatingip_uuid, fixed_address):
-        sql = "update floating_ip set vm_uuid='%s', fixed_ip_address='%s' " \
-              "where uuid='%s'" % (vm_uuid, fixed_address, floatingip_uuid)
+        sql = "update floating_ip set vm_uuid='%s', fixed_ip_address='%s', " \
+              "status='in-use' where uuid='%s'" % (vm_uuid, fixed_address, floatingip_uuid)
         return super(NetworkDB, self).exec_update_sql(sql)
 
     def db_floating_ip_unbind(self, floatingip_uuid):
-        sql = "update floating_ip set vm_uuid=NULL, fixed_ip_address='None' " \
-              "where uuid='%s'" % floatingip_uuid
+        sql = "update floating_ip set vm_uuid=NULL, fixed_ip_address='None', " \
+              "status='available' where uuid='%s'" % floatingip_uuid
         return super(NetworkDB, self).exec_update_sql(sql)

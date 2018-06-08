@@ -14,6 +14,7 @@ from router_operate_manager import RouterOperateManager,\
 from floating_ip_operate_manager import FloatingIpOperateManager
 from port_operate_manager import PortOperateManager, PortRouteOperateManager
 from os_interface_operate_manager import OsInterfaceOperateManager
+from rpcclient.status_driver import StatusDriver
 
 
 class NetworkManager(object):
@@ -21,6 +22,7 @@ class NetworkManager(object):
         self.network_op_manger = NetworkOperateManager()
         self.network_route_manger = NetworkOperateRouteManager()
         self.floating_manager = FloatingIpOperateManager()
+        self.status_update = StatusDriver()
 
     @acl_check('network')
     def network_create_manager(self, context, parameters):
@@ -36,9 +38,20 @@ class NetworkManager(object):
 
             name = parameters.get('name')
             description = parameters.get('description')
-            is_admin_state_up = parameters.get('is_admin_state_up')
-            is_shared = parameters.get('is_shared')
+            is_admin_state_up = parameters.get('is_admin_state_up', 1)
+            is_shared = parameters.get('is_shared', 0)
             cidr = parameters.get('cidr')
+            ip_version = parameters.get('ip_version', 4)
+            gateway_ip = parameters.get('gateway_ip')
+            is_dhcp_enabled = parameters.get('is_dhcp_enabled', 1)
+            allocation_pools = parameters.get('allocation_pools')
+            dns_nameservers = parameters.get('dns_nameservers')
+            host_routes = parameters.get('host_routes')
+           
+            parameter_check(cidr, ptype='ncid', exist='yes')
+            parameter_check(is_dhcp_enabled, ptype='n01', exist='yes')
+            parameter_check(ip_version, ptype='n04', exist='yes')
+            parameter_check(gateway_ip, ptype='nip', exist='no')
             parameter_check(name, ptype='nname')
             parameter_check(description, ptype='ndes', exist='not_essential')
             parameter_check(is_admin_state_up, ptype='n01', exist='no')
@@ -57,20 +70,37 @@ class NetworkManager(object):
                            team_uuid=team_uuid)
         if result.get('status') != 0:
             return result
-        if cidr is not None:
-            network_uuid = result.get('result').get('resource_uuid')
-            parameters['network_uuid'] = network_uuid
-            sub_result = self.subnet_create_manager(context,
-                                                    json.dumps(parameters))
-            log.info('create the subnet result is: %s' % sub_result)
-            if sub_result.get('status') != 0:
-                # 回滚
-                log.info('rollback, delete the network-:%s' % network_uuid)
-                self.network_route_manger.network_delete(network_uuid)
-                return request_result(1030)
-            return result
-        else:
-            return result
+        network_uuid = result.get('result').get('resource_uuid')
+        parameters['network_uuid'] = network_uuid
+        # 检查network状态
+        network_status = self.network_op_manger.\
+            check_network_status(network_uuid)
+        if network_status.get('status') != 0:
+            log.error('check the network satus is: %s' % network_status)
+            return network_status
+        # 创建子网
+        sub_result = self.network_op_manger.\
+                        subnet_create(name=name,
+                                      description=description,
+                                      is_dhcp_enabled=is_dhcp_enabled,
+                                      network_uuid=network_uuid,
+                                      ip_version=ip_version,
+                                      gateway_ip=gateway_ip,
+                                      allocation_pools=allocation_pools,
+                                      cidr=cidr,
+                                      dns_nameservers=dns_nameservers,
+                                      host_routes=host_routes,
+                                      user_uuid=user_uuid,
+                                      project_uuid=project_uuid,
+                                      team_uuid=team_uuid)
+        log.info('create the subnet result is: %s' % sub_result)
+        if sub_result.get('status') != 0:
+            # 回滚
+            log.info('rollback, delete the network-:%s' % network_uuid)
+            self.network_route_manger.network_delete(network_uuid)
+            return sub_result
+        self.status_update.network_status(network_uuid)
+        return result
 
     @acl_check('network')
     def network_list_manager(self, context, parameters):
@@ -307,9 +337,11 @@ class RouterManager(object):
 
             name = parameters.get('name')
             description = parameters.get('description')
-            is_admin_state_up = parameters.get('is_admin_state_up')
+            is_admin_state_up = parameters.get('is_admin_state_up', 1)
+            out_network_uuid = parameters.get('out_network_uuid')
 
             parameter_check(name, ptype='nname')
+            parameter_check(out_network_uuid, exist='no')
             parameter_check(description, ptype='ndes', exist='not_essential')
             parameter_check(is_admin_state_up, ptype='n01', exist='no')
         except Exception, e:
@@ -319,10 +351,11 @@ class RouterManager(object):
         return self.router_manager.router_create(
             name=name,
             description=description,
-            is_admin_state_up=is_admin_state_up,
             user_uuid=user_uuid,
             project_uuid=project_uuid,
-            team_uuid=team_uuid
+            team_uuid=team_uuid,
+            out_network_uuid=out_network_uuid,
+            is_admin_state_up=is_admin_state_up
         )
 
     @acl_check('network')
@@ -423,7 +456,6 @@ class RouterRouteManager(object):
         if up_type == 'interface':
             return self.router.router_interface_ab(router_uuid,
                                                    network_uuid,
-                                                   subnet_uuid,
                                                    ip_address,
                                                    rtype)
 
@@ -463,10 +495,36 @@ class PortManager(object):
                                                     team_uuid=team_uuid)
 
     @acl_check('network')
+    def os_port_create(self, context, parameters):
+        try:
+            parameters = json.loads(parameters)
+            token = context['token']
+            source_ip = context.get('source_ip')
+            user_info = token_auth(context['token'])['result']
+            user_uuid = user_info.get('user_uuid')
+            team_uuid = user_info.get('team_uuid')
+            project_uuid = user_info.get('project_uuid')
+            log.debug('token: %s, source_ip: %s' % (token, source_ip))
+
+            port_uuid = parameters.get('port_uuid')
+            vm_uuid = parameters.get('vm_uuid')
+            parameter_check(port_uuid, exist='yes')
+            parameter_check(vm_uuid, exist='yes')
+        except Exception, e:
+            log.error('parameters error, reason is: %s' % e)
+            return request_result(101)
+        return self.port_manager.os_port_create(port_uuid,
+                                                vm_uuid,
+                                                user_uuid,
+                                                project_uuid,
+                                                team_uuid)
+
+    @acl_check('network')
     def get_network_ports(self, context, network_uuid, page_num, page_size):
         # 权限检测部分，在此只需要对network_uuid进行读权限验证即可
         try:
             parameter_check(network_uuid, exist='yes')
+
         except Exception, e:
             log.warning('parameters error, context=%s, reason=%s'
                         % (context, e))
@@ -477,9 +535,29 @@ class PortManager(object):
                                                     page_size=page_size)
 
     @acl_check('network')
-    def get_ports(self, context):
+    def get_ports(self, context, page_num, page_size):
         # 获取全部ports列表
-        pass
+        try:
+            user_info = token_auth(context['token'])['result']
+            user_uuid = user_info.get('user_uuid')
+            team_uuid = user_info.get('team_uuid')
+            team_priv = user_info.get('team_priv')
+            project_uuid = user_info.get('project_uuid')
+            project_priv = user_info.get('project_priv')
+
+            parameter_check(page_size, ptype='nnum', exist='yes')
+            parameter_check(page_num, ptype='nnum', exist='yes')
+        except Exception, e:
+            log.error('parameters error when get all ports, reason is: %s' % e)
+            return request_result(101)
+
+        return self.port_manager.ports_list(user_uuid,
+                                            team_uuid,
+                                            team_priv,
+                                            project_uuid,
+                                            project_priv,
+                                            page_size,
+                                            page_num)
 
 
 class PortRouteManager(object):
@@ -506,6 +584,17 @@ class PortRouteManager(object):
             return request_result(101)
 
         return self.port_manager.port_operate_detail(port_uuid)
+
+    @acl_check('network')
+    def os_port_delete(self, context, parameters):
+        log.info('os port delete, the context is: %s' % context)
+        try:
+            port_uuid = parameters.get('port_uuid')
+            parameter_check(port_uuid, exist='yes')
+        except Exception, e:
+            log.error('parameters error, reason is: %s' % e)
+            return request_result(101)
+        return self.port_manager.os_port_operate_delete(port_uuid)
 
 
 # RPC MANAGER

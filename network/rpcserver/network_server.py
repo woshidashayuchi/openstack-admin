@@ -15,7 +15,7 @@ from common.rabbitmq_server import RabbitmqServer
 
 def server_start(n):
 
-    queue = 'network_api'
+    queue = 'network_x_api'
 
     while True:
         try:
