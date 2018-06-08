@@ -143,8 +143,8 @@ this is the cinder api doc
  }
 """
 """
-@api {post} /api/v1.0/cinder/volumes 1 创建存储卷（一般）
-@apiName post-1
+@api {post} /api/v1.0/cinder/volumes 1 创建存储卷
+@apiName post
 @apiGroup volume
 @apiVersion 1.0.0
 @apiDescription 存储
@@ -160,7 +160,6 @@ this is the cinder api doc
 }
 @apiUse CODE_VOL_POST_0
 """
-
 """
 @api {get} /api/v1.0/cinder/volumes?page_num=<page_num>&page_size=<page_size> 2 获取存储卷列表
 @apiName list
@@ -284,27 +283,7 @@ this is the cinder api doc
 @apiUse CODE_SNAPSHOT_POST_0
 """
 """
-@api {post} /api/v1.0/cinder/volumes 6 创建存储卷（其他方式）
-@apiName post-2
-@apiGroup volume
-@apiVersion 1.0.0
-@apiDescription 存储
-@apiPermission all
-@apiParam {json} header {"token": "string"}
-@apiParam {json} body
-@apiParamExample body
-{
-     "name":"xxxx-zzzzz",
-      "snapshot_uuid":"xxxxxx-xxxxx-xxxxx", # 基于快照
-      "source_volume_uuid":"xxxxxx-xxxxxx-xxxxx", # 基于其他存储卷
-      "image_uuid":'xxx-xxx-xxx',  # 基于镜像
-      "v_type":"lvm",
-      "description":"bind token test 2"
-}
-@apiUse CODE_VOL_POST_0
-"""
-"""
-@api {post} /api/v1.0/cinder/attachments 1 绑定卷到实例
+@api {post} /api/v1.0/cinder/volumes 1 绑定卷到实例
 @apiName post
 @apiGroup attachment
 @apiVersion 1.0.0
@@ -320,11 +299,11 @@ this is the cinder api doc
 @apiUse CODE_ATTACHMENT_POST_0
 """
 """
-@api {delete} /api/v1.0/cinder/attachments/<volume_uuid> 2 解绑
+@api {delete} /api/v1.0/cinder/snapshots/<snapshot_uuid>?logic=1/0 2 解绑
 @apiName delete
 @apiGroup attachment
 @apiVersion 1.0.0
-@apiDescription 解除卷绑定
+@apiDescription 接触卷绑定
 @apiPermission all
 @apiParam {json} header {"token": "string"}
 @apiParam {json} args

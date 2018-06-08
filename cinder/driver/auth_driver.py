@@ -1,11 +1,11 @@
 # -*- coding: utf-8 -*-
 # Author: wxf<wangxiaofeng1@hualala.com>
 # Time: 2018/2/27 10:54
-import sys
-path1 = sys.path[0] + '/..'
-path2 = sys.path[0] + '/../..'
-sys.path.append(path1)
-sys.path.append(path2)
+# import sys
+# path1 = sys.path[0] + '/..'
+# path2 = sys.path[0] + '/../..'
+# sys.path.append(path1)
+# sys.path.append(path2)
 from common import conf
 from common.logs import logging as log
 from common.request_result import request_result

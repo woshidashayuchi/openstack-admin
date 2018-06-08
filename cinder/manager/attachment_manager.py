@@ -14,9 +14,19 @@ class AttachmentManager(object):
 
     def attachment_create(self, server_uuid, volume_uuid, team_uuid,
                           project_uuid, user_uuid):
-        log.info('attachment args: server_uuid:%s, volume_uuid: %s' % (
-                  server_uuid,
-                  volume_uuid))
+        log.info('attachment args: server_uuid:%s, volume_uuid:' 
+                 '%s' % (server_uuid, volume_uuid))
+        # check the volume is used
+        try:
+            if_attach = self.db.get_attachment_info(volume_uuid)
+            if len(if_attach) != 0:
+                log.warning('volume(%s) is used, can\'t attach again' % volume_uuid)
+                return request_result(302)
+        except Exception, e:
+            log.error('check the volume(%s) if is used by vm error, '
+                      'reason is: %s' % (volume_uuid, e))
+            return request_result(403)
+        
         op_result = self.op.attachment_create_wait(server_uuid=server_uuid,
                                                    volume_uuid=volume_uuid)
         if op_result.get('status') != 0:
@@ -71,7 +81,7 @@ class AttachmentManager(object):
             except Exception, e:
                 log.error('delete the attachment(db) error, reason is: %s' % e)
                 rollback = self.op.attachment_create(server_uuid,
-                                                     volume_uuid)
+                                                      volume_uuid)
                 log.info('rollback when delete the attachment error, '
                          'result is: %s' % rollback)
                 return request_result(404)

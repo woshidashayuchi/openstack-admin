@@ -27,7 +27,6 @@ class CinderApi(Resource):
                 source_ip = request.remote_addr
         except Exception, e:
             log.error('Token check error, reason=%s' % e)
-
             return request_result(201)
 
         try:
@@ -57,11 +56,14 @@ class CinderApi(Resource):
         try:
             page_size = int(request.args.get('page_size'))
             page_num = int(request.args.get('page_num'))
+            cloudhost_uuid = request.args.get('cloudhost_uuid')
         except Exception, e:
             log.error('page_size or page_num error, reason is: %s' % e)
             return request_result(101)
 
-        parameters = {'page_size': page_size, 'page_num': page_num}
+        parameters = {'page_size': page_size,
+                      'page_num': page_num,
+                      'cloudhost_uuid': cloudhost_uuid}
         context = context_data(token, "vol_vol_usr_com", "read")
         result = self.cinder.volume_list(context, parameters)
 
@@ -227,11 +229,14 @@ class SnapshotApi(Resource):
         try:
             page_size = int(request.args.get('page_size'))
             page_num = int(request.args.get('page_num'))
+            volume_uuid = request.args.get('volume_uuid')
         except Exception, e:
             log.error('page_size or page_num error, reason is: %s' % e)
             return request_result(101)
 
-        parameters = {'page_size': page_size, 'page_num': page_num}
+        parameters = {'page_size': page_size,
+                      'page_num': page_num,
+                      'volume_uuid': volume_uuid}
 
         context = context_data(token, "vol_snap_usr_com", "read")
         result = self.snapshot.snap_list(context, parameters)
@@ -288,7 +293,8 @@ class SnapshotRouteApi(Resource):
             log.error('Token check error, reason=%s' % e)
             return request_result(201)
         try:
-            logic = int(request.args.get('logic'))
+            # logic = int(request.args.get('logic'))
+            logic = 0
         except Exception, e:
             log.error('get the logic parameters error, reason is: %s' % e)
             return request_result(101)
@@ -308,7 +314,9 @@ class SnapshotRouteApi(Resource):
             log.error('Token check error, reason=%s' % e)
             return request_result(201)
         try:
-            up_dict = json.loads(request.get_data())
+            up_dict = {'up_type': request.args.get('utype')}
+            if up_dict['up_type'] not in ('revert', 'recovery'):
+                up_dict.update(json.loads(request.get_data()))
         except Exception, e:
             log.error('get the body parameters error, reason is: %s' % e)
             return request_result(101)
@@ -376,3 +384,97 @@ class AttachmentRouteApi(Resource):
         context = context_data(token, volume_uuid, "delete", source_ip)
         return self.attach.attachment_delete(context=context,
                                              volume_uuid=volume_uuid)
+
+
+class TempletApi(Resource):
+    def __init__(self):
+        self.cinder = CinderManager()
+
+    def post(self):
+        try:
+            token = request.headers.get('token')
+            token_auth(token)
+            source_ip = request.headers.get('X-Real-IP')
+            if source_ip is None:
+                source_ip = request.remote_addr
+        except Exception, e:
+            log.error('Token check error, reason=%s' % e)
+            return request_result(201)
+
+        try:
+            parameters = json.loads(request.get_data())
+        except Exception, e:
+            log.error('create the volume(param) error, reason is: %s' % e)
+            return request_result(101)
+        # context:
+        # 在进行manager的相关调度与操作时候，提供权限判断，token提取等功能
+        context = context_data(token, "vol_vol_pro_com", "create", source_ip)
+
+        result = self.cinder.\
+            templet_create(context=context,
+                           parameters=parameters)
+
+        return result
+
+    def get(self):
+        try:
+            token = request.headers.get('token')
+            token_auth(token)
+        except Exception, e:
+            log.error('Token check error, reason=%s' % e)
+            return request_result(201)
+
+        try:
+            page_size = int(request.args.get('page_size'))
+            page_num = int(request.args.get('page_num'))
+        except Exception, e:
+            log.error('page_size or page_num error, reason is: %s' % e)
+            return request_result(101)
+
+        parameters = {'page_size': page_size,
+                      'page_num': page_num}
+        context = context_data(token, "vol_vol_usr_com", "read")
+        result = self.cinder.templet_list(context, parameters)
+        return result
+
+
+class TempletRouteApi(Resource):
+    def __init__(self):
+        self.cinder = CinderRouteManager()
+
+    def get(self, templet_uuid):
+        try:
+            token = request.headers.get('token')
+            token_auth(token)
+        except Exception, e:
+            log.error('Token check error, reason=%s' % e)
+            return request_result(201)
+        context = context_data(token, templet_uuid, "read")
+        return self.cinder.templet_detail(context, templet_uuid)
+
+    def delete(self, templet_uuid):
+        try:
+            token = request.headers.get('token')
+            token_auth(token)
+            source_ip = request.headers.get('X-Real-IP')
+            if source_ip is None:
+                source_ip = request.remote_addr
+        except Exception, e:
+            log.error('Token check error, reason=%s' % e)
+            return request_result(201)
+        context = context_data(token, templet_uuid, "delete", source_ip)
+        return self.cinder.templet_delete(context, templet_uuid)
+
+    def put(self, templet_uuid):
+        try:
+            token = request.headers.get('token')
+            token_auth(token)
+            source_ip = request.headers.get('X-Real-IP')
+            if source_ip is None:
+                source_ip = request.remote_addr
+        except Exception, e:
+            log.error('Token check error, reason=%s' % e)
+            return request_result(201)
+        parameters = request.get_data()
+        context = context_data(token, templet_uuid, "update", source_ip)
+        return self.cinder.templet_update(context, parameters)

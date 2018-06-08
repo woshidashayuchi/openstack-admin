@@ -18,6 +18,9 @@ class RabbitmqResponse(object):
         self.rpc_api.add_resource('osdisk_cre',
                                   self.rpcapi_define.osdisk_create)
 
+        self.rpc_api.add_resource('osdisk_del',
+                                  self.rpcapi_define.osdisk_delete)
+
         self.rpc_api.add_resource('clouddisk_cre',
                                   self.rpcapi_define.clouddisk_create)
 

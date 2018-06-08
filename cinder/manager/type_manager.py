@@ -4,7 +4,7 @@
 from db.cinder_db import CinderDB
 from common.logs import logging as log
 from common.request_result import request_result
-from common.skill import time_diff, use_time, parameters_check
+from common.skill import time_diff, use_time
 from common.connect import connection_admin
 
 

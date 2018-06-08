@@ -6,21 +6,53 @@ from driver.cinder_driver import CinderDriver
 # from driver.auth_driver import get_token
 from common.logs import logging as log
 from common.request_result import request_result
-from common.skill import time_diff, use_time
+from common.skill import time_diff
 from common import conf
 from driver.openstack_driver import OpenstackDriver
+from rpcclient.status_driver import StatusDriver
 import time
 
 
 class VolumeManager(object):
     def __init__(self):
         self.op_driver = OpenstackDriver()
+        self.status_update = StatusDriver()
         self.db = CinderDB()
 
-    def osdisk_create(self, name, description, volume_uuid, v_type,
-                      user_uuid, project_uuid, team_uuid,
+    def osdisk_create(self, name, volume_uuid, v_type, image_uuid,
+                      size, conn_to, user_uuid, project_uuid, team_uuid,
+                      description='os_volume', source_volume_uuid=None,
+                      snapshot_uuid=None, is_use_domain=None,
                       is_start=1, is_secret=0):
-        pass
+        log.debug(size)
+        try:
+            size = self.op_driver.image_size(image_uuid)
+        except Exception, e:
+            log.error('get the image size error, reason is: %s' % e)
+            return request_result(1204)
+        try:
+            db_result = self.db.\
+                volume_create(name=name,
+                              size=size,
+                              description=description,
+                              v_type=v_type,
+                              conn_to=conn_to,
+                              snapshot_uuid=snapshot_uuid,
+                              source_volume_uuid=source_volume_uuid,
+                              is_start=is_start,
+                              is_use_domain=is_use_domain,
+                              image_uuid=image_uuid,
+                              is_secret=is_secret,
+                              user_uuid=user_uuid,
+                              team_uuid=team_uuid,
+                              project_uuid=project_uuid,
+                              volume_uuid=volume_uuid)
+            if db_result is not None:
+                return request_result(401)
+        except Exception, e:
+            log.error('create the volume(db) error, reason is: %s' % e)
+            return request_result(401)
+        return request_result(0, {'resource_uuid': volume_uuid})
 
     def create(self, name, size, description, v_type, conn_to=None,
                snapshot_uuid=None, is_use_domain=None, is_start=0,
@@ -43,12 +75,33 @@ class VolumeManager(object):
         :param project_uuid
         :param team_uuid
         :return: volume_uuid """
-        # 获取snapshot的相关信息
+        # 判断是否重名
+        try:
+            db_count = self.db.volume_name_check(name, team_uuid,
+                                                 project_uuid, user_uuid)
+            if db_count[0][0] != 0:
+                return request_result(302)
+        except Exception, e:
+            log.error('check the name if used error, reason is: %s' % e)
+            return request_result(403)
+
+        # get the volume type
+        try:
+            if v_type not in ('ssd', 'hdd'):
+                v_type = 'hdd'
+            type_uuids = self.db.vol_type_detail(v_type)
+            type_uuid = type_uuids[0][0]
+            type_name = type_uuids[0][1]
+            log.info('the volume type uuid is: %s, name is: %s' % (type_uuid,
+                                                                   name))
+        except Exception, e:
+            log.error('get the volume type error, reason is: %s' % e)
+            return request_result(403)
 
         op_result = self.op_driver.\
             volume_create(size=size,
                           name=name,
-                          v_type=v_type,
+                          v_type=type_name,
                           description=description,
                           snapshot_uuid=snapshot_uuid,
                           source_volume_uuid=source_volume_uuid,
@@ -61,6 +114,7 @@ class VolumeManager(object):
         if image_uuid is not None:
             is_start = 1
         try:
+            volume_uuid = op_result.get('result').get('id')
             db_result = self.db.\
                 volume_create(name=name,
                               size=size,
@@ -76,8 +130,7 @@ class VolumeManager(object):
                               user_uuid=user_uuid,
                               team_uuid=team_uuid,
                               project_uuid=project_uuid,
-                              volume_uuid=op_result.
-                              get('result').get('id'))
+                              volume_uuid=volume_uuid)
         except Exception, e:
             log.error('create the volume(db) error, reason is: %s' % e)
             # rollback
@@ -87,14 +140,15 @@ class VolumeManager(object):
             return request_result(401)
 
         log.info('op: %s, db: %s' % (op_result, db_result))
-
+        # 异步状态更新
+        self.status_update.volume_status(volume_uuid)
         return request_result(0, {'resource_uuid':
                                   op_result.get('result').get('id')})
 
     def list(self, user_uuid, team_uuid, team_priv,
              project_uuid, project_priv, page_size, page_num):
 
-        result = []
+        ret = []
         try:
             if ((project_priv is not None) and ('R' in project_priv)) \
                or ((team_priv is not None) and ('R' in team_priv)):
@@ -102,13 +156,21 @@ class VolumeManager(object):
                                                         project_uuid,
                                                         page_size,
                                                         page_num)
+                db_count = self.db.volume_count_project(team_uuid,
+                                                        project_uuid)
+                log.info('get the count from db is: %s' % db_count)
+                count = db_count[0][0]
             else:
                 db_result = self.db.volume_list(team_uuid,
                                                 project_uuid,
                                                 user_uuid,
                                                 page_size,
                                                 page_num)
-
+                db_count = self.db.volume_count(team_uuid,
+                                                project_uuid,
+                                                user_uuid)
+                log.info('get the count from db is: %s' % db_count)
+                count = db_count[0][0]
         except Exception, e:
             log.error('Database select error, reason=%s' % e)
             return request_result(403)
@@ -118,38 +180,75 @@ class VolumeManager(object):
         # except Exception, e:
         #     log.error('get the volume list(db) error, reason is: %s' % e)
         #     return request_result(403)
-        log.info('+++++++++++++')
-        log.info(db_result)
-        if len(db_result) != 0:
-            for volume in db_result:
-                volume_uuid = volume[0]
-                name = volume[1]
-                description = volume[2]
-                size = volume[3]
-                status = volume[4]
-                v_type = volume[5]
-                conn_to = volume[6]
-                is_use_domain = volume[7]
-                is_start = volume[8]
-                is_secret = volume[9]
-                snapshot_uuid = volume[10]
-                source_volume_uuid = volume[11]
-                image_uuid = volume[12]
-                create_time = time_diff(volume[13])
-                result.append({'volume_uuid': volume_uuid,
-                               'name': name,
-                               'description': description,
-                               'size': size,
-                               'status': status,
-                               'v_type': v_type,
-                               'conn_to': conn_to,
-                               'snapshot_uuid': snapshot_uuid,
-                               'source_volume_uuid': source_volume_uuid,
-                               'image_uuid': image_uuid,
-                               'is_use_domain': is_use_domain,
-                               'is_start': is_start,
-                               'is_secret': is_secret,
-                               'create_time': create_time})
+        try:
+            if len(db_result) != 0:
+                for volume in db_result:
+                    volume_uuid = volume[0]
+                    name = volume[1]
+                    description = volume[2]
+                    size = volume[3]
+                    status = volume[4]
+                    v_type = volume[5]
+                    conn_to = volume[6]
+                    is_use_domain = volume[7]
+                    is_start = volume[8]
+                    is_secret = volume[9]
+                    snapshot_uuid = volume[10]
+                    source_volume_uuid = volume[11]
+                    image_uuid = volume[12]
+                    create_time = time_diff(volume[13])
+                    update_time = time_diff(volume[14])
+                    ret.append({'volume_uuid': volume_uuid,
+                                'name': name,
+                                'description': description,
+                                'size': size,
+                                'status': status,
+                                'v_type': v_type,
+                                'conn_to': conn_to,
+                                'snapshot_uuid': snapshot_uuid,
+                                'templet_uuid': source_volume_uuid,
+                                'image_uuid': image_uuid,
+                                'is_use_domain': is_use_domain,
+                                'is_start': is_start,
+                                'is_secret': is_secret,
+                                'create_time': create_time,
+                                'update_time': update_time})
+
+            result = {
+                'count': count,
+                'volumes_list': ret
+            }
+        except Exception, e:
+            log.error('explain the db result error, reason is: %s' % e)
+            return request_result(403)
+
+        return request_result(0, result)
+
+    def list_cloudhost_volumes(self, cloudhost_uuid, page_size, page_num):
+        ret = []
+
+        try:
+            db_result = self.db.list_cloudhost_volumes(cloudhost_uuid,
+                                                       page_size,
+                                                       page_num)
+            db_count = self.db.count_cloudhost_volumes(cloudhost_uuid)
+            count = db_count[0][0]
+            if len(db_result) != 0:
+                for vol in db_result:
+                    ret.append({
+                        'volume_uuid': vol[0],
+                        'name': vol[1],
+                        'size': vol[2],
+                        'status': vol[3]
+                    })
+            result = {
+                'count': count,
+                'volumes_list': ret
+            }
+        except Exception, e:
+            log.error('get the volumes which is used by cloudhost(db) '
+                      'error, reason is: %s' % e)
+            return request_result(403)
 
         return request_result(0, result)
 
@@ -174,12 +273,14 @@ class VolumeRouteManager(object):
     def if_can_delete(self, volume_uuid):
         try:
             db_result = self.db.volume_if_can_delete(volume_uuid)
+            if_as_templet = self.db.volume_if_as_templet(volume_uuid)
+            attach_info = self.db.get_attachment_info(volume_uuid)
         except Exception, e:
-            log.error('get the snapshot for the volume(%s) error, '
+            log.error('check if can delete the  volume(%s) error, '
                       'reason is: %s' % (volume_uuid, e))
             return
-        log.info('if can delete check , the db_result:%s' % db_result[0][0])
-        if db_result[0][0] != 0:
+        if (db_result[0][0] != 0) or (len(attach_info) != 0) or (if_as_templet[0][0] != 0):
+            log.warning('can\'t delete the volume(%s)' % volume_uuid)
             return False
         else:
             return True
@@ -187,6 +288,10 @@ class VolumeRouteManager(object):
     # 逻辑删除
     # 即：只是不再展现于页面
     def logic_delete(self, volume_uuid):
+        # check if can be delete
+        del_check = self.if_can_delete(volume_uuid)
+        if del_check is False:
+            return request_result(604)
 
         # update the volume show status from database
         try:
@@ -201,13 +306,13 @@ class VolumeRouteManager(object):
     # 物理删除
     # 即: 删除所有的
     def delete(self, volume_uuid):
-        # 如果待删除的存储卷有快照依赖，禁止删除
+        # 如果待删除的存储卷有快照依赖或者正在使用，禁止删除
         del_check = self.if_can_delete(volume_uuid)
         if del_check is False:
             return request_result(604)
 
         try:
-            db_result = self.db.volume_logic_update(volume_uuid)
+            db_result = self.db.volume_delete(volume_uuid)
         except Exception, e:
             log.error('logic delete the volume(db) error, reason is: %s' % e)
             return request_result(402)
@@ -248,7 +353,7 @@ class VolumeRouteManager(object):
                 result['is_start'] = volume[8]
                 result['is_secret'] = volume[9]
                 result['snapshot_uuid'] = volume[10]
-                result['source_volume_uuid'] = volume[11]
+                result['templet_uuid'] = volume[11]
                 result['image_uuid'] = volume[12]
                 result['create_time'] = time_diff(volume[13])
 
@@ -274,6 +379,32 @@ class VolumeRouteManager(object):
             log.error('update the database error, reason is: %s' % e)
             return request_result(402)
 
+        return request_result(0, {'resource_uuid': volume_uuid})
+
+    def osdisk_delete(self, volume_uuid):
+        # try:
+        #     self.db.volume_delete(volume_uuid)
+        # except Exception, e:
+        #     log.error('delete the osdisk error, reason is: %s' % e)
+        #     return request_result(404)
+        try:
+            db_ret = self.db.get_attachment_info(volume_uuid)
+            if len(db_ret) != 0:
+                attachment_uuid = db_ret[0][0]
+                # server_uuid = db_ret[0][1]
+            else:
+                log.warning('don\'t have this volume(%s) attachment' 
+                            'msg' % volume_uuid)
+                return request_result(0)
+        except Exception, e:
+            log.error('get the attachment uuid error, reason is: %s' % e)
+            return request_result(403)
+
+        try:
+            self.db.attachment_delete(attachment_uuid, None)
+        except Exception, e:
+            log.error('delete the attachment error, reason is: %s' % e)
+            return request_result(402)
         return request_result(0, {'resource_uuid': volume_uuid})
 
 
@@ -333,7 +464,7 @@ def volume_status_monitor():
                 except Exception, e:
                     log.error('get the volume status(op) error, '
                               'reason is: %s' % e)
-                    break
+                    continue
                 op_status = op_result.get('result')
                 if status != op_status:
                     # update the status
@@ -342,7 +473,7 @@ def volume_status_monitor():
                     except Exception, e:
                         log.error('update the database error, '
                                   'reason is: %s' % e)
-                        break
+                        continue
                     update_num += 1
             all_num += 1
             log.info('done update times: %d, '

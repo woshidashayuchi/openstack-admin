@@ -16,10 +16,22 @@ class CinderRpcAPIs(object):
 
     def osdisk_create(self, context, parameters):
         try:
-            pass
+            result = self.cinder_manager. \
+                osdisk_create(context=context, parameters=parameters)
         except Exception, e:
             log.error('create the osdisk(mq) error, reason is: %s' % e)
-            return request_result(201)
+            return request_result(999)
+        return result
+
+    def osdisk_delete(self, context, parameters):
+        try:
+            volume_uuid = parameters.get('volume_uuid')
+            result = self.cinder_route_manager.osdisk_delete(context,
+                                                             volume_uuid)
+        except Exception, e:
+            log.error('delete the osdisk(mq) error, reason is: %s' % e)
+            return request_result(999)
+        return result
 
     def clouddisk_create(self, context, parameters=None):
         log.info('create the vol base data is: context:%s, '
@@ -62,8 +74,9 @@ class CinderRpcAPIs(object):
     def clouddisk_info(self, context, parameters):
         try:
             volume_uuid = parameters.get('volume_uuid')
-            result = self.cinder_route_manager.volume_detail(context,
-                                                             volume_uuid)
+            result = self.cinder_route_manager.volume_detail(
+                                               context,
+                                               volume_uuid)
         except Exception, e:
             log.error('get the volume detail(mq) error, reason is: %s' % e)
             return request_result(999)
@@ -85,6 +98,8 @@ class CinderRpcAPIs(object):
         return result
 
     def disk_snapshot_create(self, context, parameters):
+        log.info('<<<<vm snapshot create, context: %s>>>>>>' % context)
+        log.info('<<<<vm snapshot create, parameters: %s>>>>>>' % context)
         try:
             result = self.cinder_manager.snap_create(context, parameters)
         except Exception, e:
@@ -98,7 +113,7 @@ class CinderRpcAPIs(object):
             snapshot_uuid = parameters.get('snapshot_uuid')
             logic = parameters.get('logic')
             if logic is None:
-                logic = 1
+                logic = 0
             result = self.cinder_route_manager.\
                 snap_delete(context,
                             snapshot_uuid=snapshot_uuid,
@@ -111,10 +126,12 @@ class CinderRpcAPIs(object):
     def disk_snapshot_revert(self, context, parameters):
         try:
             snapshot_uuid = parameters.get('snapshot_uuid')
-            up_dict = {'up_type': 'recovery'}
+            volume_uuid = parameters.get('volume_uuid')
+            up_dict = {'up_type': 'revert'}
             self.cinder_route_manager.snap_update(context,
                                                   up_dict,
-                                                  snapshot_uuid)
+                                                  snapshot_uuid,
+                                                  volume_uuid)
         except Exception, e:
             log.error('revert snapshot(mq) error, reason is: %s' % e)
             return request_result(999)
@@ -134,7 +151,7 @@ class CinderRpcAPIs(object):
 
     @time_log
     def attachment_create(self, context, parameters):
-
+        log.info('>>>>>>>>>>>>>>>>>>>>>>>>>')
         try:
             server_uuid = parameters.get('server_uuid')
             volume_uuid = parameters.get('volume_uuid')

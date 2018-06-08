@@ -24,7 +24,6 @@ class ComputeDriver(object):
         self.local_ip = socket.gethostbyname(socket.gethostname())
         self.rbtmq = RabbitmqClient()
         self.queue = "cinder_api"
-        self.net_queue = 'network_api'
         self.timeout = 5
 
     # # 暂时忽略
@@ -325,109 +324,10 @@ class ComputeDriver(object):
         except Exception, e:
             log.error('Rpc client exec error, reason=%s' % e)
             raise Exception(e)
-
         if result.get('status') != 0:
             raise Exception('the result status is not correct')
-
-    def vnic_info(self, token, network_uuid):
-        context = context_data(token, network_uuid, "read")
-        try:
-            rpc_body = rpc_data("vnic_info", context, network_uuid)
-            result = self.rbtmq.rpc_call_client(self.net_queue,
-                                                self.timeout + 20,
-                                                rpc_body)
-        except Exception, e:
-            log.error('get the vnic info error, reason is: %s' % e)
-            raise Exception(e)
-        if result.get('status') != 0:
-            raise Exception(result.get('msg'))
-
-        return result
-
-    def vnic_attach(self, token, vnic_uuid, vm_uuid, vm_name=None,
-                    source_ip=socket.gethostbyname(socket.gethostname())):
-
-        context = context_data(token, vnic_uuid, "update", source_ip)
-
-        parameters = {
-            'vm_uuid': vm_uuid,
-            'port_uuid': vnic_uuid
-        }
-        try:
-            rpc_body = rpc_data("vnic_attach", context, parameters)
-            result = self.rbtmq.rpc_call_client(self.net_queue,
-                                                self.timeout + 20,
-                                                rpc_body)
-        except Exception, e:
-            log.error('Rpc client exec error, reason=%s' % e)
-            raise Exception(e)
-        if result.get('status') != 0:
-            raise Exception(result.get('msg'))
-
-    def vnic_unattach(self, token, vnic_uuid,
-                      source_ip=socket.gethostbyname(socket.gethostname())):
-        context = context_data(token, vnic_uuid, "update", source_ip)
-        parameters = {
-            'port_uuid': vnic_uuid
-        }
-        try:
-            rpc_body = rpc_data("vnic_unattach", context, parameters)
-            result = self.rbtmq.rpc_call_client(self.net_queue,
-                                                self.timeout + 20,
-                                                rpc_body)
-        except Exception, e:
-            log.error('Rpc client exec error, reason=%s' % e)
-            raise Exception(e)
-        if result.get('status') != 0:
-            raise Exception(result.get('msg'))
-
-    def floatip_bind(self, token, vm_uuid, floatip,
-                     fixed_address=None):
-        context = context_data(token, floatip, "update", self.local_ip)
-        parameters = {
-            'vm_uuid': vm_uuid,
-            'floatip': floatip,
-            'fixed_address': fixed_address
-        }
-        try:
-            rpc_body = rpc_data("floatip_bind", context, parameters)
-            result = self.rbtmq.rpc_call_client(self.net_queue,
-                                                self.timeout+20,
-                                                rpc_body)
-        except Exception, e:
-            log.error('Rpc client exec error, reason=%s' % e)
-            raise Exception(e)
-
-        if result.get('status') != 0:
-            raise Exception(result.get('msg'))
-
-    def floatip_unbind(self, token, floatip):
-        context = context_data(token, floatip, "update", self.local_ip)
-        parameters = {
-            'floatip': floatip
-        }
-        try:
-            rpc_body = rpc_data("floatip_unbind", context, parameters)
-            result = self.rbtmq.rpc_call_client(self.net_queue,
-                                                self.timeout + 20,
-                                                rpc_body)
-        except Exception, e:
-            log.error('Rpc client exec error, reason=%s' % e)
-            raise Exception(e)
-        if result.get('status') != 0:
-            raise Exception(result.get('msg'))
 
 
 if __name__ == '__main__':
     op = ComputeDriver()
-    # op.floatip_unbind(token='49f392bf-f09f-4e6e-b5ed-4187fb2575c5',
-    #                 floatip='172.20.2.12')
-    # print op.vnic_info(token='2843b6e4-c399-4c79-b347-dfaf715fafb0',
-    #                    network_uuid='7a94ac97-0c67-4455-89de-7ffd4e70cb39')
-    print op.vnic_attach(token='92287455-f644-4ea0-bced-2a8e557d598e',
-                         vm_uuid='c12db4ae-0ef2-41c7-bd3e-4bc459b3cd9c',
-                         vnic_uuid='c3eeb771-ddfe-4048-8929-6b772ea09e05')
-
-    # print op.vnic_unattach(token='92287455-f644-4ea0-bced-2a8e557d598e',
-    #                        vm_uuid='c12db4ae-0ef2-41c7-bd3e-4bc459b3cd9c',
-    #                        port_uuid='c3eeb771-ddfe-4048-8929-6b772ea09e05')
+    op.clouddisk_unmount('586cb978-ca47-43ea-acbd-a9c5adce83b8','a4240115-12a1-4ef6-b76d-288e67a009b8')

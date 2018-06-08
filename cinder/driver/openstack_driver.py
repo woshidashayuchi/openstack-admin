@@ -12,7 +12,6 @@ from common.connect import connection
 from common.logs import logging as log
 from common.time_log import time_log
 from common import conf
-from common.skill import use_time
 from common.request_result import request_result
 import requests
 import json
@@ -28,7 +27,7 @@ class OpenstackDriver(object):
     def get_token(user_name, password):
         header = {"Content-Type": "application/json",
                   "Accept": "application/json"}
-        user_msg = {"auth": {"tenantName": conf.tenantName,
+        user_msg = {"auth": {"tenantName": "cloud",
                              "passwordCredentials": {"username": user_name,
                                                      "password": password}}}
         try:
@@ -52,6 +51,16 @@ class OpenstackDriver(object):
         result = {'token': token, 'user_uuid': user_uuid}
         return request_result(0, result)
 
+    def image_size(self, image_uuid):
+        try:
+            image_size = self.conn.compute.get_image(image_uuid).size
+        except Exception, e:
+            log.error('get the size of image error, reason is: %s' % e)
+            raise Exception(e)
+        image_size = image_size/1024/1024/1024
+        image_size = image_size+image_size*0.08
+        return int(image_size)
+
     def volume_create(self, name, size, v_type, description, snapshot_uuid,
                       source_volume_uuid, image_uuid):
 
@@ -62,7 +71,7 @@ class OpenstackDriver(object):
             if snapshot_uuid is not None:
                 op_result = self.conn.block_storage. \
                     create_volume(name=name,
-                                  type=v_type,
+                                  volume_type=v_type,
                                   description=description,
                                   snapshot_id=snapshot_uuid)
                 return request_result(0, {'id': op_result.id,
@@ -70,27 +79,29 @@ class OpenstackDriver(object):
             if source_volume_uuid is not None:
                 op_result = self.conn.block_storage. \
                     create_volume(name=name,
-                                  type=v_type,
                                   description=description,
                                   source_volume_id=source_volume_uuid)
+                print op_result
                 return request_result(0, {'id': op_result.id,
-                                          'size': op_result.size})
+                                          'size': op_result.size,
+                                          'status': op_result.status,
+                                          'type': op_result.volume_type
+                                          })
 
             if image_uuid is not None:
                 op_result = self.conn.block_storage.\
                     create_volume(name=name,
-                                  type=v_type,
+                                  volume_type=v_type,
                                   description=description,
                                   image_id=image_uuid,
                                   is_bootable=True)
                 return request_result(0, {'id': op_result.id,
                                           'size': op_result.size})
 
-
             op_result = self.conn.block_storage.\
                 create_volume(size=size,
                               name=name,
-                              type=v_type,
+                              volume_type=v_type,
                               description=description)
 
         except Exception, e:
@@ -98,7 +109,10 @@ class OpenstackDriver(object):
             return request_result(601)
         log.info('create the volume result is: %s' % op_result)
         return request_result(0, {'id': op_result.id,
-                                  'size': op_result.size})
+                                  'size': op_result.size,
+                                  'status': op_result.status,
+                                  'type': op_result.volume_type
+                                  })
 
     def volume_delete(self, volume_uuid):
         if self.conn is False:
@@ -224,43 +238,14 @@ class OpenstackDriver(object):
                 else:
                     return request_result(1012)
 
-    # image about
-    def create_image(self, name, file, container_format='bare',
-                     disk_format='qcow2'):
-
-        if self.conn is False:
-            return request_result(701)
-        try:
-            op_result = self.conn.image.upload_image(
-                container_format=container_format,
-                disk_format=disk_format,
-                name=name,
-                file=file)
-        except Exception, e:
-            log.error('create the image error, reason is: %s' % e)
-            return request_result(1201)
-
-        return request_result(0, op_result)
-
-    def delete_image(self, image_uuid):
-        if self.conn is False:
-            return request_result(701)
-        try:
-            op_result = self.conn.image.delete_image(image_uuid)
-        except Exception, e:
-            log.error('delete the image(op) error, reason is: %s' % e)
-            return request_result(1202)
-
-        return request_result(0, op_result)
-
 
 # test code
 if __name__ == '__main__':
     op = OpenstackDriver()
-    # try:
-    #     dele = op.attachment_delete_wait(
-    #             attachment_uuid='3a88bc4a-2464-45a0-af66-a3c4db873fd7',
-    #             server_uuid='f276cd3f-809f-4431-b803-068960f43afd')
-    # except Exception, e:
-    #     log.error('attachment detail error, reason is: %s' % e)
-    # op.create_image(name='test1')
+    print op.volume_create(size=None,
+                          name='keyishanchu',
+                          v_type=None,
+                          description='keyishanchu',
+                          snapshot_uuid=None,
+                          source_volume_uuid='071860d8-f6cf-4e23-8023-8a8c1de5ce57',
+                          image_uuid=None)
